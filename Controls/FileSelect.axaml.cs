@@ -38,5 +38,6 @@ public partial class FileSelect : UserControl
         var button = sender as Button;
         char letter = button.Content.ToString().First();
         model.MusicLibrary.FilterFiles(letter);
+        ListBox.ScrollIntoView(0);
     }    
 }

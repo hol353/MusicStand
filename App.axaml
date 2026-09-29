@@ -6,5 +6,44 @@
 
     <Application.Styles>
         <FluentTheme />
+
+        <!-- Font size styling. -->
+        <Style Selector="TemplatedControl">
+            <Setter Property="FontSize" Value="18"/>
+        </Style>
+
+        <Style Selector="TextBlock">
+            <Setter Property="FontSize" Value="18"/>
+        </Style>
+
+        <Style Selector="Button">
+            <Setter Property="FontSize" Value="18"/>
+        </Style>        
+
+        <!-- Toolbar styles -->
+        <Style Selector="StackPanel.toolbar">
+
+            <Style Selector="^ ToggleButton">
+                <Setter Property="Height" Value="50"/>
+            </Style>
+
+            <Style Selector="^ PathIcon">
+                <Setter Property="Width" Value="40"/>
+                <Setter Property="Height" Value="40"/>
+            </Style>
+
+            <Style Selector="^ ComboBox">
+                <Style Selector="^ Ellipse">
+                    <Setter Property="Width" Value="40"/>
+                    <Setter Property="Height" Value="40"/>
+                </Style>  
+            </Style>      
+            <!-- Remove the ComboBox drop down arrow. -->
+            <Style Selector="^ ComboBox /template/ PathIcon#DropDownGlyph">
+                <Setter Property="IsVisible" Value="False"/>
+            </Style>
+
+        </Style>
+        
     </Application.Styles>
 </Application>

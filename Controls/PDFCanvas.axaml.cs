@@ -292,18 +292,23 @@ public partial class PDFCanvas : UserControl
         // detect if the user is currently panning, and if so, ignore the tap
         if (panTime.TotalMilliseconds < 400)
         {
-            var viewPortHeight = zoomBorder.Bounds.Height + musicCanvas.Spacing;
+            double centrePointX = zoomBorder.Bounds.Width / 2;
+            double centrePointY = zoomBorder.Bounds.Height / 2;
+            double xTolerance = zoomBorder.Bounds.Width / 10;
+            double yTolerance = zoomBorder.Bounds.Height / 10;
+
             Point point = e.GetPosition(zoomBorder);
 
             // If the tap is in the center, toggle the toolbar instead of scrolling
-            if (point.Y > viewPortHeight / 3 && point.Y < 2 * viewPortHeight / 3)
+            if (Math.Abs(point.X - centrePointX) < xTolerance &&
+                Math.Abs(point.Y - centrePointY) < yTolerance)
             {
                 OnCentreTap();
                 return;
             }
 
             int nextPageIndex;
-            if (point.Y < viewPortHeight / 2)
+            if (point.Y < centrePointY / 2)
                 nextPageIndex = currentPageIndex - 1;   // go to previous page
             else
                 nextPageIndex = currentPageIndex + 1;   // go to next page

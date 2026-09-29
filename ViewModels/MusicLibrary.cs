@@ -117,6 +117,7 @@ public class MusicLibrary
             Files.AddRange(allFiles.Where(file => Int32.TryParse(file.FileNameForSorting.First().ToString(), out int i))); 
         else
             Files.AddRange(allFiles.Where(file => file.FileNameForSorting.StartsWith(letter.ToString(), ignoreCase: true, CultureInfo.CurrentCulture)));
+        
     }
 
 }
