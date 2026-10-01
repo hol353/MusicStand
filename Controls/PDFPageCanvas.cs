@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.PanAndZoom;
+using Avalonia.Input;
 using Avalonia.LogicalTree;
 using Avalonia.Media;
 using Avalonia.Skia;
@@ -18,6 +19,9 @@ namespace MusicStand;
 /// </summary>
 public class PDFPageCanvas : InkCanvas
 {
+
+    private MainViewModel model;
+
     /// <summary>The music page to show.</summary>
     private MusicPage page;
 
@@ -33,16 +37,19 @@ public class PDFPageCanvas : InkCanvas
     /// <summary>The size of the viewport in pixels.</summary>
     private SKRect viewPortSize;
     private ZoomBorder zoomBorder;
+    private Point pointerPosition;
+    private bool isPointerOverPage;
 
     /// <summary>
     /// Constructor.
     /// </summary>
     /// <param name="image">The music bitmap to show.</param>
     /// <param name="svg">The annotations from the .svg to show.</param>
-    public PDFPageCanvas(PDFCanvas pdfAnnotator, MusicPage page)
+    public PDFPageCanvas(PDFCanvas pdfAnnotator, MusicPage page, MainViewModel model)
     {
         this.page = page;
         this.pdfAnnotator = pdfAnnotator;
+        this.model = model;
         List<InkStylusPoint> points = new();
         StylusPointListSpan stylusPointListSpan = new(points, 0, points.Count);
         if (page.Annotations != null)
@@ -76,6 +83,8 @@ public class PDFPageCanvas : InkCanvas
         this.StrokeCollected += OnStrokeCollected;
         this.StrokeErased += OnStrokeErased;
         this.SizeChanged += OnSizeChanged;
+        this.PointerMoved += OnPointerMoved;
+        this.PointerExited += OnPointerExited;
     }
 
     /// <summary>
@@ -88,6 +97,21 @@ public class PDFPageCanvas : InkCanvas
         this.StrokeCollected -= OnStrokeCollected;
         this.StrokeErased -= OnStrokeErased;
         this.SizeChanged -= OnSizeChanged;
+        this.PointerMoved -= OnPointerMoved;
+        this.PointerExited -= OnPointerExited;
+    }
+
+    private void OnPointerMoved(object sender, PointerEventArgs e)
+    {
+        pointerPosition = e.GetPosition(this);
+        isPointerOverPage = true;
+        InvalidateVisual();
+    }
+
+    private void OnPointerExited(object sender, PointerEventArgs e)
+    {
+        isPointerOverPage = false;
+        InvalidateVisual();
     }
 
     private void OnSizeChanged(object sender, SizeChangedEventArgs e)
@@ -229,7 +253,40 @@ public class PDFPageCanvas : InkCanvas
             context.DrawRectangle(Brushes.White, null, bitmapRenderRectangle);
             context.DrawImage(page.Bitmap, new Rect(0, 0, page.Bitmap.Size.Width, page.Bitmap.Size.Height), bitmapRenderRectangle);
         }
+
+        // If in stamp model, then render a stamp preview at the current pointer position.
+        if (isPointerOverPage && model.IsStampMode && bitmapRenderRectangle.Contains(pointerPosition))
+        {
+            var path = model.SelectedStamp.GetPathCentredOn(pointerPosition);
+            var geometry = Geometry.Parse(path.ToSvgPathData());
+            var color = model.SelectedBrush.Color;
+            var previewColor = Color.FromArgb((byte)(color.A * 0.7), color.R, color.G, color.B);
+            context.DrawGeometry(new SolidColorBrush(previewColor), null, geometry);
+        }
+
         //base.Render(context);
         //AvaloniaSkiaInkCanvas.Render(context);
+    }
+
+    /// <summary>
+    /// Add a stamp to the page.
+    /// </summary>
+    /// <param name="position">The position to add the stamp to.</param>
+    /// <param name="color"></param>
+    /// <returns></returns>
+    public bool AddStampToPage(Point position)
+    {
+        if (!bitmapRenderRectangle.Contains(position))
+            return false;
+        SKPath path = model.SelectedStamp.GetPathCentredOn(position);
+
+        var color = model.SelectedBrush.Color;
+        var inkColor = new SKColor(color.R, color.G, color.B, color.A);
+        List<InkStylusPoint> points = new();
+        var stylusPointListSpan = new StylusPointListSpan(points, 0, points.Count);
+        var stroke = SkiaStroke.CreateStaticStroke(InkId.NewId(), path, stylusPointListSpan, inkColor, 0.1f, true, inkStrokeRenderer: null);
+        AvaloniaSkiaInkCanvas.AddStaticStroke(stroke);
+        SaveStrokes();
+        return true;
     }
 }

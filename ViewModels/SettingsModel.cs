@@ -25,6 +25,9 @@ public class SettingsModel
     /// <summary>The currently selected highlighter color index.</summary>
     public int SelectedHighlighterColorIndex { get; set; } = 1;
 
+    /// <summary>The currently selected stamp index.</summary>
+    public int SelectedStampIndex { get; set; } = 0;
+
     /// <summary>
     /// Load the application settings from disk.
     /// </summary>

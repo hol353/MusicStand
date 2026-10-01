@@ -25,6 +25,9 @@ public class MainViewModel : ReactiveObject
     /// <summary>Is the app in highlighter mode?</summary>
     private bool _isHighlighterMode;
 
+    /// <summary>Is the app in stamp mode?</summary>
+    private bool _isStampMode;
+
     /// <summary>Is file select mode enabled?</summary>    
     private bool _isFileSelectMode;
 
@@ -42,6 +45,7 @@ public class MainViewModel : ReactiveObject
     /// The currently selected colour.
     /// </summary>
     private ISolidColorBrush _color = Brushes.Red;
+    private Stamp _selectedStamp;
 
     /// <summary>
     /// Constructor.
@@ -58,9 +62,14 @@ public class MainViewModel : ReactiveObject
             Brushes.Orange,
             Brushes.Purple
         ];
+        StampCollection =
+        [
+            new Stamp("Flat.svg")
+        ];
         this.applicationName = Path.GetFileNameWithoutExtension(Assembly.GetExecutingAssembly().Location);
         Settings = SettingsModel.Create(BaseDirectory);
-        
+        _selectedStamp = StampCollection[Settings.SelectedStampIndex];
+
         MusicLibrary = new(this);
     }
 
@@ -83,6 +92,7 @@ public class MainViewModel : ReactiveObject
                 IsPenMode = false;
                 IsEraserMode = false;
                 IsHighlighterMode = false;
+                IsStampMode = false;
                 IsFileSelectMode = false;
             }
         }
@@ -100,6 +110,7 @@ public class MainViewModel : ReactiveObject
             {
                 IsEraserMode = false;
                 IsHighlighterMode = false;
+                IsStampMode = false;
                 IsFileSelectMode = false;
                 SelectedBrush = SolidColorBrushCollection[Settings.SelectedPenColorIndex];
             }
@@ -121,6 +132,7 @@ public class MainViewModel : ReactiveObject
             {
                 IsPenMode = false;
                 IsHighlighterMode = false;
+                IsStampMode = false;
                 IsFileSelectMode = false;
             }
             this.RaiseAndSetIfChanged(ref _isEraserMode, value);
@@ -139,12 +151,32 @@ public class MainViewModel : ReactiveObject
             {
                 IsPenMode = false;
                 IsEraserMode = false;
+                IsStampMode = false;
                 IsFileSelectMode = false;
                 SelectedBrush = SolidColorBrushCollection[Settings.SelectedHighlighterColorIndex];
             }
             else if (value != _isHighlighterMode)
                 Settings.SelectedHighlighterColorIndex = SolidColorBrushCollection.IndexOf(SelectedBrush);
             this.RaiseAndSetIfChanged(ref _isHighlighterMode, value);
+        }
+    }
+
+    /// <summary>
+    /// Is stamp mode enabled?
+    /// </summary>
+    public bool IsStampMode
+    {
+        get => _isStampMode;
+        set
+        {
+            if (value)
+            {
+                IsPenMode = false;
+                IsEraserMode = false;
+                IsHighlighterMode = false;
+                IsFileSelectMode = false;
+            }
+            this.RaiseAndSetIfChanged(ref _isStampMode, value);
         }
     }
 
@@ -200,6 +232,20 @@ public class MainViewModel : ReactiveObject
     }    
 
     /// <summary>
+    /// The currently selected stamp.
+    /// </summary>
+    public Stamp SelectedStamp
+    { 
+        get => _selectedStamp; 
+        set 
+        {
+            this.RaiseAndSetIfChanged(ref _selectedStamp, value);
+            if (value != null)
+                Settings.SelectedStampIndex = StampCollection.IndexOf(SelectedStamp);
+        }
+    } 
+
+    /// <summary>
     /// Collection of colour brushes/
     /// </summary>
     public ObservableCollection<ISolidColorBrush> SolidColorBrushCollection { get; }
@@ -212,6 +258,12 @@ public class MainViewModel : ReactiveObject
         get => _color;
         set => this.RaiseAndSetIfChanged(ref _color, value);
     }
+
+    /// <summary>
+    /// Collection of stamps
+    /// </summary>
+    public ObservableCollection<Stamp> StampCollection { get; }
+
 
     /// <summary>
     /// The directory where the application stores settings/annotations.

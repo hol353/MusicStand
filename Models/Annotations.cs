@@ -47,7 +47,7 @@ public class Annotations
     /// Creates an SVG instance from a stream.
     /// </summary>
     /// <param name="s">The stream.</param>
-    private static Annotations Create(Stream s)
+    public static Annotations Create(Stream s)
     {
         var svg = new Annotations();  
         svg.svg = new XmlDocument();
