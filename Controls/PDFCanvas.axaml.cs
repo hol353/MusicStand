@@ -125,7 +125,7 @@ public partial class PDFCanvas : UserControl
     {
         var settings = inkCanvas.AvaloniaSkiaInkCanvas.Settings;
         var colour = settings.InkColor;
-        settings.InkThickness = model.IsHighlighterMode ? 24 : 10;
+        settings.InkThickness = model.IsHighlighterMode ? 24 : 4;
         settings.InkColor = model.IsHighlighterMode
             ? new SKColor(colour.Red, colour.Green, colour.Blue, Math.Min(colour.Alpha, (byte)110))
             : new SKColor(colour.Red, colour.Green, colour.Blue, model.SelectedBrush.Color.A);
@@ -199,7 +199,7 @@ public partial class PDFCanvas : UserControl
                     sheetMusicControl.AvaloniaSkiaInkCanvas.Settings.EraserViewCreator = new DelegateEraserViewCreator(() => new CustomEraserView());
                     sheetMusicControl.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch;
                     sheetMusicControl.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top;
-                    sheetMusicControl.AvaloniaSkiaInkCanvas.Settings.InkThickness = 2;
+                    sheetMusicControl.AvaloniaSkiaInkCanvas.Settings.IgnorePressure = true;
                     musicCanvas.Children.Add(sheetMusicControl);
                 }
             }

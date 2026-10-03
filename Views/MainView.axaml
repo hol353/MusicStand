@@ -47,7 +47,7 @@
                     <Flyout Placement="Bottom">
                         <ListBox ItemsSource="{Binding StampCollection}" 
                                  SelectedItem="{Binding SelectedStamp}" 
-                                 Height="320" Width="40">
+                                 Height="500" Width="200">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <PathIcon Data="{Binding Geometry}"/>

@@ -28,14 +28,14 @@
             </Style>
 
             <Style Selector="^ PathIcon">
-                <Setter Property="Width" Value="40"/>
-                <Setter Property="Height" Value="40"/>
+                <Setter Property="Width" Value="35"/>
+                <Setter Property="Height" Value="35"/>
             </Style>
 
             <Style Selector="^ ComboBox">
                 <Style Selector="^ Ellipse">
-                    <Setter Property="Width" Value="40"/>
-                    <Setter Property="Height" Value="40"/>
+                    <Setter Property="Width" Value="35"/>
+                    <Setter Property="Height" Value="35"/>
                 </Style>  
             </Style>      
             <!-- Remove the ComboBox drop down arrow. -->

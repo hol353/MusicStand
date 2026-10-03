@@ -41,16 +41,10 @@ public class Stamp
     /// <returns>The transformed path.</returns>
     public SKPath GetPathCentredOn(Point position)
     {
-        float scaleX = 0.05F;
-        float scaleY = 0.05F;
-
-        float stampHeight = Path.Bounds.Height * scaleX;
-        float stampWidth = Path.Bounds.Width * scaleY;
-        var matrix = SKMatrix.CreateScaleTranslation(
-            scaleX,
-            scaleY,
-            (float)position.X - stampWidth / 2,
-            (float)position.Y - stampHeight / 2);        
+        float stampHeight = Path.Bounds.Height;
+        float stampWidth = Path.Bounds.Width;
+        var matrix = SKMatrix.CreateTranslation((float)position.X - stampWidth / 2,
+                                                (float)position.Y - stampHeight / 2);        
         SKPath clonedPath = Path.Clone();
         clonedPath.Transform(matrix);
         return clonedPath;

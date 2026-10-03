@@ -64,7 +64,17 @@ public class MainViewModel : ReactiveObject
         ];
         StampCollection =
         [
-            new Stamp("Flat.svg")
+            new Stamp("sharp.svg"),
+            new Stamp("flat.svg"),
+            new Stamp("natural.svg"),
+            new Stamp("ppp.svg"),
+            new Stamp("pp.svg"),
+            new Stamp("p.svg"),
+            new Stamp("mp.svg"),
+            new Stamp("mf.svg"),
+            new Stamp("f.svg"),
+            new Stamp("ff.svg"),
+            new Stamp("fff.svg")
         ];
         this.applicationName = Path.GetFileNameWithoutExtension(Assembly.GetExecutingAssembly().Location);
         Settings = SettingsModel.Create(BaseDirectory);
