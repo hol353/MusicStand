@@ -1,4 +1,6 @@
 ﻿using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Interactivity;
 
 namespace MusicStand;
 
@@ -16,6 +18,22 @@ public partial class MainView : UserControl
     public MainView()
     {
         InitializeComponent();
+    }
+
+    /// <summary>
+    /// The stamp button has been clicked. Decide whether to display the flyout.
+    /// </summary>
+    /// <param name="sender"></param>
+    /// <param name="e"></param>
+    private void OnStampButtonClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ToggleButton button || button.IsChecked == true)
+            return;
+
+        button.IsChecked = true;
+        var flyout = (Flyout)Resources["StampFlyout"]!;
+        ((ListBox)flyout.Content!).DataContext = button.DataContext;
+        flyout.ShowAt(button);
     }
 
     /// <summary>

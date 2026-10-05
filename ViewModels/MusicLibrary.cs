@@ -111,7 +111,7 @@ public class MusicLibrary
     public void FilterFiles(char? letter)
     {
         Files.Clear();
-        if (letter == null || letter == '-')
+        if (letter == null)
             Files.AddRange(allFiles);
         else if (letter == '#')
             Files.AddRange(allFiles.Where(file => Int32.TryParse(file.FileNameForSorting.First().ToString(), out int i))); 

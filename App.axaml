@@ -4,6 +4,21 @@
              RequestedThemeVariant="Default">
              <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="ToolbarBackground">#E5E5E5</SolidColorBrush>
+                    <SolidColorBrush x:Key="ToolbarIconForeground">#467AA3</SolidColorBrush>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="ToolbarBackground">#2B2B2B</SolidColorBrush>
+                    <SolidColorBrush x:Key="ToolbarIconForeground">#6CC1DD</SolidColorBrush>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+
     <Application.Styles>
         <FluentTheme />
 
@@ -22,14 +37,18 @@
 
         <!-- Toolbar styles -->
         <Style Selector="StackPanel.toolbar">
+            <Setter Property="Background" Value="{DynamicResource ToolbarBackground}"/>
 
             <Style Selector="^ ToggleButton">
                 <Setter Property="Height" Value="50"/>
+                <Setter Property="Background" Value="Transparent"/>
             </Style>
 
             <Style Selector="^ PathIcon">
                 <Setter Property="Width" Value="35"/>
                 <Setter Property="Height" Value="35"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Foreground" Value="{DynamicResource ToolbarIconForeground}"/>
             </Style>
 
             <Style Selector="^ ComboBox">

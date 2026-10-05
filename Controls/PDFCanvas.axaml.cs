@@ -125,9 +125,9 @@ public partial class PDFCanvas : UserControl
     {
         var settings = inkCanvas.AvaloniaSkiaInkCanvas.Settings;
         var colour = settings.InkColor;
-        settings.InkThickness = model.IsHighlighterMode ? 24 : 4;
+        settings.InkThickness = model.IsHighlighterMode ? 40 : 4;
         settings.InkColor = model.IsHighlighterMode
-            ? new SKColor(colour.Red, colour.Green, colour.Blue, Math.Min(colour.Alpha, (byte)110))
+            ? new SKColor(colour.Red, colour.Green, colour.Blue, Math.Min(colour.Alpha, (byte)128))
             : new SKColor(colour.Red, colour.Green, colour.Blue, model.SelectedBrush.Color.A);
     }
 
@@ -295,7 +295,7 @@ public partial class PDFCanvas : UserControl
     /// </summary>
     private void OnSingleTap(object sender, TappedEventArgs e)
     {
-        // If stamp model is on then add a stamp to the page at the cursor position.
+        // If stamp mode is on then add a stamp to the page at the cursor position.
         if (model.IsStampMode)
         {
             foreach (var page in musicCanvas.Children.OfType<PDFPageCanvas>())

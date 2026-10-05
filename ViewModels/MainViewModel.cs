@@ -46,6 +46,7 @@ public class MainViewModel : ReactiveObject
     /// </summary>
     private ISolidColorBrush _color = Brushes.Red;
     private Stamp _selectedStamp;
+    private string _filterLetter;
 
     /// <summary>
     /// Constructor.
@@ -58,7 +59,7 @@ public class MainViewModel : ReactiveObject
             Brushes.Yellow,
             Brushes.Black,
             Brushes.Green,
-            Brushes.Blue,
+            Brushes.Cyan,
             Brushes.Orange,
             Brushes.Purple
         ];
@@ -274,6 +275,14 @@ public class MainViewModel : ReactiveObject
     /// </summary>
     public ObservableCollection<Stamp> StampCollection { get; }
 
+    /// <summary>
+    /// A letter (A-Z) to filter the file list.
+    /// </summary>
+    public string FilterLetter
+    {
+        get => _filterLetter;
+        set => this.RaiseAndSetIfChanged(ref _filterLetter, value);
+    }
 
     /// <summary>
     /// The directory where the application stores settings/annotations.

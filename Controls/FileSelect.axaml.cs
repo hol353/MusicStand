@@ -2,6 +2,7 @@
 using System.Globalization;
 using System.Linq;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
 
 namespace MusicStand;
@@ -35,8 +36,10 @@ public partial class FileSelect : UserControl
     /// </summary>
     private void OnNavigationButtonClicked(object sender, RoutedEventArgs e)
     {
-        var button = sender as Button;
-        char letter = button.Content.ToString().First();
+        var button = sender as ToggleButton;
+        char? letter = null;
+        if ((bool)button.IsChecked)
+            letter = button.Content.ToString().First();
         model.MusicLibrary.FilterFiles(letter);
         ListBox.ScrollIntoView(0);
     }    
