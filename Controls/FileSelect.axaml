@@ -7,6 +7,7 @@
 
     <DockPanel >
         <ComboBox x:Name="ComboBox" HorizontalAlignment="Stretch" DockPanel.Dock="Top" ItemsSource="{Binding MusicLibrary.Directories}" SelectedItem="{Binding SelectedDirectory}" />
+            <TextBox x:Name="FileNameFilter" DockPanel.Dock="Top" PlaceholderText="Filter files..." TextChanged="OnFileNameFilterChanged" />
             <StackPanel x:Name="NavigationButtons" DockPanel.Dock="Right">
                 <ToggleButton Width="35" Click="OnNavigationButtonClicked">#</ToggleButton>
                 <ToggleButton Width="35" Click="OnNavigationButtonClicked">A</ToggleButton>

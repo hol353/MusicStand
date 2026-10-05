@@ -43,4 +43,12 @@ public partial class FileSelect : UserControl
         model.MusicLibrary.FilterFiles(letter);
         ListBox.ScrollIntoView(0);
     }    
+
+    /// <summary>
+    /// User has changed the file name filter.
+    /// </summary>
+    private void OnFileNameFilterChanged(object sender, TextChangedEventArgs e)
+    {
+        model?.MusicLibrary.FilterFilesByName(FileNameFilter.Text);
+    }
 }
