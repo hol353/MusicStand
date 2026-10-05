@@ -43,8 +43,11 @@ public class Stamp
     {
         float stampHeight = Path.Bounds.Height;
         float stampWidth = Path.Bounds.Width;
-        var matrix = SKMatrix.CreateTranslation((float)position.X - stampWidth / 2,
-                                                (float)position.Y - stampHeight / 2);        
+        float scaleX = 1.5F;
+        float scaleY = 1.5F;
+        var matrix = SKMatrix.CreateScaleTranslation(scaleX, scaleY,
+                                                     (float)position.X - stampWidth / 2,
+                                                     (float)position.Y - stampHeight / 2);        
         SKPath clonedPath = Path.Clone();
         clonedPath.Transform(matrix);
         return clonedPath;
