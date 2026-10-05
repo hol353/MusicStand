@@ -319,7 +319,8 @@ public partial class PDFCanvas : UserControl
             if (Math.Abs(point.X - centrePointX) < xTolerance &&
                 Math.Abs(point.Y - centrePointY) < yTolerance)
             {
-                OnCentreTap();
+                if (!model.IsToolbarVisible)
+                    OnCentreTap();
                 return;
             }
 

@@ -36,7 +36,7 @@
         </Style>        
 
         <!-- Toolbar styles -->
-        <Style Selector="StackPanel.toolbar">
+        <Style Selector="DockPanel.toolbar">
             <Setter Property="Background" Value="{DynamicResource ToolbarBackground}"/>
 
             <Style Selector="^ ToggleButton">
