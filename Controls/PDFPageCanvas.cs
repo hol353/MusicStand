@@ -39,6 +39,9 @@ public class PDFPageCanvas : InkCanvas
     private ZoomBorder zoomBorder;
     private Point pointerPosition;
     private bool isPointerOverPage;
+    private bool isHairpinDrawing;
+    private Point hairpinStartPosition;
+    private Point hairpinCurrentPosition;
 
     /// <summary>
     /// Constructor.
@@ -84,6 +87,8 @@ public class PDFPageCanvas : InkCanvas
         this.StrokeErased += OnStrokeErased;
         this.SizeChanged += OnSizeChanged;
         this.PointerMoved += OnPointerMoved;
+        this.PointerPressed += OnPointerPressed;
+        this.PointerReleased += OnPointerReleased;
         this.PointerExited += OnPointerExited;
     }
 
@@ -98,12 +103,50 @@ public class PDFPageCanvas : InkCanvas
         this.StrokeErased -= OnStrokeErased;
         this.SizeChanged -= OnSizeChanged;
         this.PointerMoved -= OnPointerMoved;
+        this.PointerPressed -= OnPointerPressed;
+        this.PointerReleased -= OnPointerReleased;
         this.PointerExited -= OnPointerExited;
+    }
+
+    private void OnPointerPressed(object sender, PointerPressedEventArgs e)
+    {
+        if (!model.IsStampMode || !model.SelectedStamp.IsHairpin ||
+            !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            return;
+
+        var position = e.GetPosition(this);
+        if (!bitmapRenderRectangle.Contains(position))
+            return;
+
+        isHairpinDrawing = true;
+        hairpinStartPosition = position;
+        hairpinCurrentPosition = position;
+        e.Pointer.Capture(this);
+        e.Handled = true;
+        InvalidateVisual();
+    }
+
+    private void OnPointerReleased(object sender, PointerReleasedEventArgs e)
+    {
+        if (!isHairpinDrawing)
+            return;
+
+        hairpinCurrentPosition = e.GetPosition(this);
+        if (hairpinCurrentPosition.X - hairpinStartPosition.X > 1 &&
+            Math.Abs(hairpinCurrentPosition.Y - hairpinStartPosition.Y) > 1)
+            AddHairpinToPage(hairpinStartPosition, hairpinCurrentPosition);
+
+        isHairpinDrawing = false;
+        e.Pointer.Capture(null);
+        e.Handled = true;
+        InvalidateVisual();
     }
 
     private void OnPointerMoved(object sender, PointerEventArgs e)
     {
         pointerPosition = e.GetPosition(this);
+        if (isHairpinDrawing)
+            hairpinCurrentPosition = pointerPosition;
         isPointerOverPage = true;
         InvalidateVisual();
     }
@@ -255,7 +298,15 @@ public class PDFPageCanvas : InkCanvas
         }
 
         // If in stamp model, then render a stamp preview at the current pointer position.
-        if (isPointerOverPage && model.IsStampMode && bitmapRenderRectangle.Contains(pointerPosition))
+        if (isHairpinDrawing && model.IsStampMode && model.SelectedStamp.IsHairpin)
+        {
+            var path = GetHairpinPath(hairpinStartPosition, hairpinCurrentPosition);
+            var geometry = Geometry.Parse(path.ToSvgPathData());
+            var color = model.SelectedBrush.Color;
+            var previewColor = Color.FromArgb((byte)(color.A * 0.7), color.R, color.G, color.B);
+            context.DrawGeometry(new SolidColorBrush(previewColor), null, geometry);
+        }
+        else if (!model.SelectedStamp.IsHairpin && isPointerOverPage && model.IsStampMode && bitmapRenderRectangle.Contains(pointerPosition))
         {
             var path = model.SelectedStamp.GetPathCentredOn(pointerPosition);
             var geometry = Geometry.Parse(path.ToSvgPathData());
@@ -288,5 +339,24 @@ public class PDFPageCanvas : InkCanvas
         AvaloniaSkiaInkCanvas.AddStaticStroke(stroke);
         SaveStrokes();
         return true;
+    }
+
+    private SKPath GetHairpinPath(Point start, Point end)
+    {
+        return model.SelectedStamp.IsDecrescendo
+            ? model.SelectedStamp.GetDecrescendoPath(start, end)
+            : model.SelectedStamp.GetCrescendoPath(start, end);
+    }
+
+    private void AddHairpinToPage(Point start, Point end)
+    {
+        var path = GetHairpinPath(start, end);
+        var color = model.SelectedBrush.Color;
+        var inkColor = new SKColor(color.R, color.G, color.B, color.A);
+        List<InkStylusPoint> points = new();
+        var stylusPointListSpan = new StylusPointListSpan(points, 0, points.Count);
+        var stroke = SkiaStroke.CreateStaticStroke(InkId.NewId(), path, stylusPointListSpan, inkColor, 0.1f, true, inkStrokeRenderer: null);
+        AvaloniaSkiaInkCanvas.AddStaticStroke(stroke);
+        SaveStrokes();
     }
 }

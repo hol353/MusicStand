@@ -75,7 +75,9 @@ public class MainViewModel : ReactiveObject
             new Stamp("mf.svg"),
             new Stamp("f.svg"),
             new Stamp("ff.svg"),
-            new Stamp("fff.svg")
+            new Stamp("fff.svg"),
+            Stamp.CreateCrescendo(),
+            Stamp.CreateDecrescendo()
         ];
         this.applicationName = Path.GetFileNameWithoutExtension(Assembly.GetExecutingAssembly().Location);
         Settings = SettingsModel.Create(BaseDirectory);

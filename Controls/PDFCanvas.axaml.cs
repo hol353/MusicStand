@@ -298,6 +298,12 @@ public partial class PDFCanvas : UserControl
         // If stamp mode is on then add a stamp to the page at the cursor position.
         if (model.IsStampMode)
         {
+            if (model.SelectedStamp.IsHairpin)
+            {
+                e.Handled = true;
+                return;
+            }
+
             foreach (var page in musicCanvas.Children.OfType<PDFPageCanvas>())
                 if (page.AddStampToPage(e.GetPosition(page)))
                     break;
