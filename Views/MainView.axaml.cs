@@ -36,12 +36,19 @@ public partial class MainView : UserControl
         flyout.ShowAt(button);
     }
 
+    private void OnEditSetListClick(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainViewModel model)
+            model.BeginSetListEdit();
+    }
+
     /// <summary>
     /// Application is about to close. Save annotations.
     /// </summary>
     internal void OnClosing()
     {
         var model = DataContext as MainViewModel;
+        model.SaveSetList();
         model.MusicLibrary.CloseAll();
         model.Settings.Save(model.BaseDirectory);
     }

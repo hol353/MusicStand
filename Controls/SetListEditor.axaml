@@ -1,0 +1,47 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MusicStand"
+             xmlns:local="clr-namespace:MusicStand"
+             x:Class="MusicStand.SetListEditor"
+             x:DataType="vm:MainViewModel">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="2*"/>
+            <ColumnDefinition Width="3*"/>
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0"
+                Background="{DynamicResource SystemControlBackgroundAltHighBrush}">
+            <local:FileSelect/>
+        </Border>
+
+        <DockPanel Grid.Column="1"
+                   LastChildFill="True"
+                   Background="{DynamicResource SystemControlBackgroundAltHighBrush}">
+            <DockPanel DockPanel.Dock="Top" Margin="12">
+                <Button Content="Done"
+                        DockPanel.Dock="Right"
+                        Click="OnDoneClick"/>
+                <TextBlock Text="Setlist" VerticalAlignment="Center"/>
+            </DockPanel>
+            <Grid>
+                <ListBox x:Name="SetListFilesList"
+                         ItemsSource="{Binding SetListFiles}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding FileNameWithoutExtension}"/>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+                <Border x:Name="DropIndicator"
+                        Height="3"
+                        Margin="8,0"
+                        VerticalAlignment="Top"
+                        Background="{DynamicResource ToolbarIconForeground}"
+                        CornerRadius="2"
+                        IsHitTestVisible="False"
+                        IsVisible="False"/>
+            </Grid>
+        </DockPanel>
+    </Grid>
+</UserControl>

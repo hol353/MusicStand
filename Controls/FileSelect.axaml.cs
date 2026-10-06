@@ -51,4 +51,17 @@ public partial class FileSelect : UserControl
     {
         model?.MusicLibrary.FilterFilesByName(FileNameFilter.Text);
     }
+
+    private async void OnFileSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (ListBox.SelectedItem is not FileItem { IsCreateSetListCommand: true })
+            return;
+
+        ListBox.SelectedItem = null;
+        if (DataContext is not MainViewModel viewModel || TopLevel.GetTopLevel(this) is not Window owner)
+            return;
+
+        var dialog = new CreateSetListWindow(viewModel);
+        await dialog.ShowDialog<bool>(owner);
+    }
 }

@@ -10,6 +10,8 @@ namespace MusicStand;
 
 public class MusicLibrary
 {
+    public const string SetListsDirectoryName = "Set Lists";
+
     private MainViewModel model;
     private IEnumerable<FileItem> allFiles = Enumerable.Empty<FileItem>();
     private char? selectedLetter;
@@ -45,6 +47,9 @@ public class MusicLibrary
         this.model = model;
         BasePath = model.Settings.MusicLibraryBaseDirectory;
         ReadDirectories(BasePath);
+        if (!Directories.Contains(SetListsDirectoryName, StringComparer.CurrentCultureIgnoreCase))
+            Directories.Add(SetListsDirectoryName);
+        Directories.Sort(StringComparer.CurrentCulture);
         ReadFiles();
     }
 
@@ -141,6 +146,9 @@ public class MusicLibrary
 
         if (!string.IsNullOrEmpty(fileNameFilter))
             filteredFiles = filteredFiles.Where(file => file.FileNameWithoutExtension.Contains(fileNameFilter, StringComparison.CurrentCultureIgnoreCase));
+
+        if (string.Equals(model.SelectedDirectory, SetListsDirectoryName, StringComparison.CurrentCultureIgnoreCase))
+            Files.Add(FileItem.CreateSetListCommand());
 
         Files.AddRange(filteredFiles);
     }

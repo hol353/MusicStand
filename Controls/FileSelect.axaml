@@ -37,10 +37,13 @@
                 <ToggleButton Width="35" Click="OnNavigationButtonClicked">Y</ToggleButton>
                 <ToggleButton Width="35" Click="OnNavigationButtonClicked">Z</ToggleButton>
             </StackPanel>   
-            <ListBox x:Name="ListBox" ItemsSource="{Binding MusicLibrary.Files}" SelectedItem="{Binding SelectedFile}">
+            <ListBox x:Name="ListBox"
+                     ItemsSource="{Binding MusicLibrary.Files}"
+                     SelectedItem="{Binding SelectedFile}"
+                     SelectionChanged="OnFileSelectionChanged">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
-                        <TextBlock Text="{Binding FileNameWithoutExtension}" />
+                        <TextBlock Text="{Binding DisplayName}" />
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>

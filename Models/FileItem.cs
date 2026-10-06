@@ -7,6 +7,25 @@ public class FileItem
 {
     private readonly string basePath;
 
+    private FileItem()
+    {
+        AbsolutePath = string.Empty;
+        basePath = string.Empty;
+    }
+
+    /// <summary>
+    /// Gets whether this item represents the create-setlist command.
+    /// </summary>
+    public bool IsCreateSetListCommand { get; private init; }
+
+    /// <summary>
+    /// Creates the special list entry used to start a new setlist.
+    /// </summary>
+    public static FileItem CreateSetListCommand() => new()
+    {
+        IsCreateSetListCommand = true
+    };
+
     /// <summary>
     /// Initializes a new instance of the <see cref="FileItem"/> class.
     /// </summary>
@@ -32,6 +51,11 @@ public class FileItem
     /// Gets the file name without extension.
     /// </summary>
     public string FileNameWithoutExtension => Path.GetFileNameWithoutExtension(AbsolutePath);
+
+    /// <summary>
+    /// Gets the text displayed for this file in the file selector.
+    /// </summary>
+    public string DisplayName => IsCreateSetListCommand ? "<Create new setlist>" : FileNameWithoutExtension;
 
     /// <summary>
     /// Gets the file name without leading 'The ' or 'A ' for sorting purposes.
