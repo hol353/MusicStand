@@ -12,10 +12,13 @@
         <Flyout x:Key="StampFlyout" Placement="Bottom">
             <ListBox ItemsSource="{Binding StampCollection}"
                      SelectedItem="{Binding SelectedStamp}"
-                     Height="500" Width="200">
+                     Height="550">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
-                        <PathIcon Data="{Binding Geometry}"/>
+                        <Viewbox Height="20" Stretch="Uniform">
+                            <Path Data="{Binding Geometry}"
+                                  Fill="{DynamicResource ToolbarIconForeground}"/>
+                        </Viewbox>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>

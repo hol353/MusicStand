@@ -72,8 +72,8 @@ public class Stamp
     {
         float stampHeight = Path.Bounds.Height;
         float stampWidth = Path.Bounds.Width;
-        float scaleX = 1.5F;
-        float scaleY = 1.5F;
+        float scaleX = 1.3F;
+        float scaleY = 1.3F;
         var matrix = SKMatrix.CreateScaleTranslation(scaleX, scaleY,
                                                      (float)position.X - stampWidth / 2,
                                                      (float)position.Y - stampHeight / 2);        
