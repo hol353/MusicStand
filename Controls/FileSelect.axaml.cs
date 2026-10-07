@@ -41,6 +41,15 @@ public partial class FileSelect : UserControl
         if ((bool)button.IsChecked)
             letter = button.Content.ToString().First();
         model.MusicLibrary.FilterFiles(letter);
+
+        // Unselect all other buttons
+        foreach (var child in NavigationButtons.Children)
+        {
+            if (child is ToggleButton otherButton && otherButton != button)
+                otherButton.IsChecked = false;
+        }
+
+        // Scroll to the top of the list after filtering.
         ListBox.ScrollIntoView(0);
     }    
 
