@@ -32,7 +32,7 @@ public class MainViewModel : ReactiveObject
     private bool _isFileSelectMode;
 
     /// <summary>Is the current setlist being edited?</summary>
-    private bool _isSetListEditing;
+    private bool _isSetListMode;
 
     /// <summary>
     /// Is the toolbar visible?
@@ -49,7 +49,6 @@ public class MainViewModel : ReactiveObject
     /// </summary>
     private ISolidColorBrush _color = Brushes.Red;
     private Stamp _selectedStamp;
-    private string _filterLetter;
 
     /// <summary>
     /// Constructor.
@@ -87,12 +86,18 @@ public class MainViewModel : ReactiveObject
         _selectedStamp = StampCollection[Settings.SelectedStampIndex];
 
         MusicLibrary = new(this);
+        SetLists = new(this);
     }
 
     /// <summary>
     /// The music library instance.
     /// </summary>
     public MusicLibrary MusicLibrary { get; }
+
+    /// <summary>
+    /// The setlists instance.
+    /// </summary>
+    public SetListsModel SetLists { get; }
 
     /// <summary>
     /// Is the toolbar visible?
@@ -219,7 +224,7 @@ public class MainViewModel : ReactiveObject
     /// Whether the selected file can be edited as a setlist.
     /// </summary>
     public bool CanEditSetList =>
-        !_isSetListEditing &&
+        !_isSetListMode &&
         _selectedFile != null &&
         string.Equals(Path.GetExtension(_selectedFile.AbsolutePath), ".txt", StringComparison.OrdinalIgnoreCase) &&
         File.Exists(_selectedFile.AbsolutePath);
@@ -227,47 +232,33 @@ public class MainViewModel : ReactiveObject
     /// <summary>
     /// Whether the setlist editor is currently displayed.
     /// </summary>
-    public bool IsSetListEditing
+    public bool IsSetListMode
     {
-        get => _isSetListEditing;
-        private set
+        get => _isSetListMode;
+        set
         {
-            if (_isSetListEditing != value)
-            {
-                this.RaiseAndSetIfChanged(ref _isSetListEditing, value);
-                this.RaisePropertyChanged(nameof(CanEditSetList));
-                this.RaisePropertyChanged(nameof(IsPDFCanvasVisible));
-            }
+            this.RaiseAndSetIfChanged(ref _isSetListMode, value);
         }
+    }
+
+    /// <summary>
+    /// Display the setlist viewer/editor.
+    /// </summary>
+    public void SetListDisplay()
+    {
+        IsSetListMode = true;
+        IsFileSelectMode = false;
     }
 
     /// <summary>
     /// Whether the PDF canvas should be displayed.
     /// </summary>
-    public bool IsPDFCanvasVisible => !_isSetListEditing;
+    public bool IsPDFCanvasVisible => !_isSetListMode;
 
     /// <summary>
     /// The ordered files in the setlist being edited.
     /// </summary>
     public ObservableCollection<FileItem> SetListFiles { get; } = new();
-
-    /// <summary>
-    /// The currently selected directory (relative to BasePath).
-    /// </summary>
-    public string SelectedDirectory 
-    { 
-        get => Settings.SelectedDirectory; 
-        set 
-        { 
-            if (value != Settings.SelectedDirectory)
-            {
-                this.RaisePropertyChanging("SelectedDirectory");
-                Settings.SelectedDirectory = value;
-                MusicLibrary.ReadFiles(); 
-                this.RaisePropertyChanged("SelectedDirectory");
-            }
-        } 
-    }
 
     /// <summary>
     /// The currently selected file (relative to SelectedDirectory).
@@ -277,20 +268,6 @@ public class MainViewModel : ReactiveObject
         get => _selectedFile; 
         set 
         {
-            if (value?.IsCreateSetListCommand == true)
-            {
-                this.RaisePropertyChanged(nameof(SelectedFile));
-                return;
-            }
-
-            if (_isSetListEditing)
-            {
-                if (value != null)
-                    AddFileToSetList(value);
-                this.RaisePropertyChanged(nameof(SelectedFile));
-                return;
-            }
-
             this.RaiseAndSetIfChanged(ref _selectedFile, value);
             this.RaisePropertyChanged(nameof(CanEditSetList));
             if (value != null)
@@ -332,125 +309,9 @@ public class MainViewModel : ReactiveObject
     public ObservableCollection<Stamp> StampCollection { get; }
 
     /// <summary>
-    /// A letter (A-Z) to filter the file list.
-    /// </summary>
-    public string FilterLetter
-    {
-        get => _filterLetter;
-        set => this.RaiseAndSetIfChanged(ref _filterLetter, value);
-    }
-
-    /// <summary>
     /// The directory where the application stores settings/annotations.
     /// </summary>
     public string BaseDirectory => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), applicationName );
-
-    /// <summary>
-    /// Loads the selected setlist into the editor.
-    /// </summary>
-    public void BeginSetListEdit()
-    {
-        if (!CanEditSetList)
-            return;
-
-        IsPenMode = false;
-        IsEraserMode = false;
-        IsHighlighterMode = false;
-        IsStampMode = false;
-        IsFileSelectMode = false;
-
-        SetListFiles.Clear();
-        foreach (string filePath in File.ReadAllLines(_selectedFile.AbsolutePath))
-            if (!string.IsNullOrWhiteSpace(filePath))
-                SetListFiles.Add(new FileItem(filePath, MusicLibrary.BasePath));
-
-        IsSetListEditing = true;
-    }
-
-    /// <summary>
-    /// Saves the edited order and returns to the PDF canvas.
-    /// </summary>
-    public void FinishSetListEdit()
-    {
-        if (!IsSetListEditing)
-            return;
-
-        SaveSetList();
-        IsSetListEditing = false;
-        this.RaisePropertyChanged(nameof(SelectedFile));
-    }
-
-    /// <summary>
-    /// Saves the current setlist if it is being edited.
-    /// </summary>
-    public void SaveSetList()
-    {
-        if (IsSetListEditing)
-            File.WriteAllLines(_selectedFile.AbsolutePath, SetListFiles.Select(file => file.AbsolutePath));
-    }
-
-    /// <summary>
-    /// Creates a setlist in the Set Lists directory and opens it in the editor.
-    /// </summary>
-    public bool TryCreateSetList(string fileName, out string error)
-    {
-        error = null;
-        fileName = fileName?.Trim();
-        if (string.IsNullOrWhiteSpace(fileName) ||
-            fileName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 ||
-            fileName.IndexOfAny("<>:\"/\\|?*".ToCharArray()) >= 0 ||
-            !string.Equals(Path.GetFileName(fileName), fileName, StringComparison.Ordinal) ||
-            Path.HasExtension(fileName))
-        {
-            error = "Enter a valid filename without an extension.";
-            return false;
-        }
-
-        string directory = Path.Combine(MusicLibrary.BasePath, MusicLibrary.SetListsDirectoryName);
-        string path = Path.Combine(directory, fileName + ".txt");
-        if (File.Exists(path))
-        {
-            error = "A setlist with that filename already exists.";
-            return false;
-        }
-
-        SaveSetList();
-        Directory.CreateDirectory(directory);
-        File.WriteAllText(path, string.Empty);
-        IsSetListEditing = false;
-
-        SelectedDirectory = MusicLibrary.SetListsDirectoryName;
-        MusicLibrary.ReadFiles();
-        SelectedFile = new FileItem(path, MusicLibrary.BasePath);
-        BeginSetListEdit();
-        return true;
-    }
-
-    /// <summary>
-    /// Adds a PDF from the music library to the current setlist.
-    /// </summary>
-    public void AddFileToSetList(FileItem file)
-    {
-        if (IsSetListEditing &&
-            string.Equals(Path.GetExtension(file.AbsolutePath), ".pdf", StringComparison.OrdinalIgnoreCase) &&
-            File.Exists(file.AbsolutePath))
-        {
-            SetListFiles.Add(file);
-        }
-    }
-
-    /// <summary>
-    /// Moves a setlist entry to a new position.
-    /// </summary>
-    public void MoveSetListFile(int oldIndex, int newIndex)
-    {
-        if (oldIndex >= 0 && oldIndex < SetListFiles.Count &&
-            newIndex >= 0 && newIndex < SetListFiles.Count &&
-            oldIndex != newIndex)
-        {
-            SetListFiles.Move(oldIndex, newIndex);
-        }
-    }
 
     /// <summary>
     /// The application settings

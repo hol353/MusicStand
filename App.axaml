@@ -37,7 +37,7 @@
 
         <Style Selector="Button">
             <Setter Property="FontSize" Value="18"/>
-        </Style>        
+        </Style>
 
         <!-- Toolbar styles -->
         <Style Selector="DockPanel.toolbar">

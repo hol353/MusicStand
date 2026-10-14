@@ -1,8 +1,5 @@
-﻿using System;
-using System.Globalization;
-using System.Linq;
+﻿using System.Linq;
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
 
 namespace MusicStand;
@@ -12,8 +9,6 @@ namespace MusicStand;
 /// </summary>
 public partial class FileSelect : UserControl
 {
-    private MainViewModel model;
-
     /// <summary>
     /// Constructor
     /// </summary>
@@ -23,54 +18,33 @@ public partial class FileSelect : UserControl
     }
 
     /// <summary>
-    /// Invoked when the control is loaded.
-    /// </summary>
-    protected override void OnLoaded(RoutedEventArgs e)
-    {
-        base.OnLoaded(e);
-        model = DataContext as MainViewModel;
-    }    
-
-    /// <summary>
     /// User has clicked a navigation button.
     /// </summary>
     private void OnNavigationButtonClicked(object sender, RoutedEventArgs e)
     {
-        var button = sender as ToggleButton;
-        char? letter = null;
-        if ((bool)button.IsChecked)
-            letter = button.Content.ToString().First();
-        model.MusicLibrary.FilterFiles(letter);
-
-        // Unselect all other buttons
-        foreach (var child in NavigationButtons.Children)
+        string letter = (sender as Button).Content.ToString();
+        object selectedItem = FileListBox.Items.Cast<FileItem>().FirstOrDefault(file => file.StartsWith(letter));
+        if (selectedItem != null)
         {
-            if (child is ToggleButton otherButton && otherButton != button)
-                otherButton.IsChecked = false;
+            FileListBox.ScrollIntoView(FileListBox.Items.Last());
+            FileListBox.ScrollIntoView(selectedItem);
         }
-
-        // Scroll to the top of the list after filtering.
-        ListBox.ScrollIntoView(0);
-    }    
-
-    /// <summary>
-    /// User has changed the file name filter.
-    /// </summary>
-    private void OnFileNameFilterChanged(object sender, TextChangedEventArgs e)
-    {
-        model?.MusicLibrary.FilterFilesByName(FileNameFilter.Text);
     }
 
-    private async void OnFileSelectionChanged(object sender, SelectionChangedEventArgs e)
+    /// <summary>
+    /// User has clicked a file in the file list. If in file select mode, the selected file is set. If in setlist mode, the file is added to the current setlist.
+    /// </summary>
+    /// <param name="sender"></param>
+    /// <param name="e"></param>
+    private void OnFileListBoxSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (ListBox.SelectedItem is not FileItem { IsCreateSetListCommand: true })
-            return;
-
-        ListBox.SelectedItem = null;
-        if (DataContext is not MainViewModel viewModel || TopLevel.GetTopLevel(this) is not Window owner)
-            return;
-
-        var dialog = new CreateSetListWindow(viewModel);
-        await dialog.ShowDialog<bool>(owner);
+        var model = DataContext as MainViewModel;
+        if (FileListBox.SelectedItem is FileItem fileItem)
+        {
+            if (model.IsFileSelectMode)
+                model.SelectedFile = fileItem;
+            else if (model.IsSetListMode)
+                model.SetLists.AddToSetList(fileItem);
+        }
     }
 }

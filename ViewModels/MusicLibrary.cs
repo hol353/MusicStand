@@ -1,21 +1,31 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using DynamicData;
+using ReactiveUI;
 
 namespace MusicStand;
 
-public class MusicLibrary
+public class MusicLibrary : ReactiveObject
 {
-    public const string SetListsDirectoryName = "Set Lists";
-
     private MainViewModel model;
     private IEnumerable<FileItem> allFiles = Enumerable.Empty<FileItem>();
-    private char? selectedLetter;
     private string fileNameFilter = string.Empty;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MusicLibrary"/> class.
+    /// </summary>
+    /// <param name="settings"></param>
+    public MusicLibrary(MainViewModel model)
+    {
+        this.model = model;
+        BasePath = model.Settings.MusicLibraryBaseDirectory;
+        ReadDirectories(BasePath);
+        Directories.Sort(StringComparer.CurrentCulture);
+        ReadFiles();
+    }
 
     /// <summary>
     /// The top-level path of the music library.
@@ -37,21 +47,40 @@ public class MusicLibrary
     /// </summary>
     public ObservableCollection<FileItem> Files { get; set; } = new();
 
+    /// <summary>
+    /// The currently selected directory (relative to BasePath).
+    /// </summary>
+    public string SelectedDirectory 
+    { 
+        get => model.Settings.SelectedDirectory; 
+        set 
+        { 
+            if (value != model.Settings.SelectedDirectory)
+            {
+                this.RaisePropertyChanging("SelectedDirectory");
+                model.Settings.SelectedDirectory = value;
+                ReadFiles(); 
+                this.RaisePropertyChanged("SelectedDirectory");
+            }
+        } 
+    }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="MusicLibrary"/> class.
+    /// File filter.
     /// </summary>
-    /// <param name="settings"></param>
-    public MusicLibrary(MainViewModel model)
+    public string Filter
     {
-        this.model = model;
-        BasePath = model.Settings.MusicLibraryBaseDirectory;
-        ReadDirectories(BasePath);
-        if (!Directories.Contains(SetListsDirectoryName, StringComparer.CurrentCultureIgnoreCase))
-            Directories.Add(SetListsDirectoryName);
-        Directories.Sort(StringComparer.CurrentCulture);
-        ReadFiles();
+        get => fileNameFilter;
+        set
+        {
+            if (fileNameFilter != value)
+            {
+                this.RaiseAndSetIfChanged(ref fileNameFilter, value);
+                ApplyFilters();
+            }
+        }
     }
+
 
     /// <summary>
     /// Opens a file in the music library. The file can be either a .pdf or a .txt (setlist) file.
@@ -99,7 +128,7 @@ public class MusicLibrary
     /// <summary>
     /// Read all files in selected directory.
     /// </summary>
-    public void ReadFiles()
+    private void ReadFiles()
     {
         var absoluteSelectedDirectory = model.Settings.SelectedDirectory?.ToAbsolute(BasePath);
         if (absoluteSelectedDirectory != null && Directory.Exists(absoluteSelectedDirectory))
@@ -111,46 +140,18 @@ public class MusicLibrary
         else
             allFiles = Enumerable.Empty<FileItem>();
 
-        selectedLetter = null;
         ApplyFilters();
     }
 
     /// <summary>
-    /// Filters the list of files based on the starting letter. If letter is null, all files are shown.
+    /// Apply filter
     /// </summary>
-    /// <param name="letter">The letter to sort or null to show all files.</param>
-    public void FilterFiles(char? letter)
-    {
-        selectedLetter = letter;
-        ApplyFilters();
-    }
-
-    /// <summary>
-    /// Filters the list of files by a substring in the file name.
-    /// </summary>
-    /// <param name="filter">The text to find in each file name.</param>
-    public void FilterFilesByName(string filter)
-    {
-        fileNameFilter = filter ?? string.Empty;
-        ApplyFilters();
-    }
-
     private void ApplyFilters()
     {
         Files.Clear();
         IEnumerable<FileItem> filteredFiles = allFiles;
-        if (selectedLetter == '#')
-            filteredFiles = filteredFiles.Where(file => Int32.TryParse(file.FileNameForSorting.First().ToString(), out int i));
-        else if (selectedLetter != null)
-            filteredFiles = filteredFiles.Where(file => file.FileNameForSorting.StartsWith(selectedLetter.ToString(), ignoreCase: true, CultureInfo.CurrentCulture));
-
         if (!string.IsNullOrEmpty(fileNameFilter))
             filteredFiles = filteredFiles.Where(file => file.FileNameWithoutExtension.Contains(fileNameFilter, StringComparison.CurrentCultureIgnoreCase));
-
-        if (string.Equals(model.SelectedDirectory, SetListsDirectoryName, StringComparison.CurrentCultureIgnoreCase))
-            Files.Add(FileItem.CreateSetListCommand());
-
         Files.AddRange(filteredFiles);
     }
-
 }

@@ -28,6 +28,9 @@ public class SettingsModel
     /// <summary>The currently selected stamp index.</summary>
     public int SelectedStampIndex { get; set; } = 0;
 
+    /// <summary>The currently selected setlist.</summary>
+    public string SelectedSetList { get; set; }
+
     /// <summary>
     /// Load the application settings from disk.
     /// </summary>

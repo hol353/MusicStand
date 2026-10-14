@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.IO;
 
 namespace MusicStand;
@@ -73,6 +74,14 @@ public class FileItem
 
             return fileName;
         }
+    }
+
+    public bool StartsWith(string letter)
+    {
+        if (letter == "#")
+            return int.TryParse(FileNameForSorting, out int i);
+        else
+            return FileNameForSorting.StartsWith(letter, ignoreCase: true, CultureInfo.CurrentCulture);
     }
 
 }
