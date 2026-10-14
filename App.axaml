@@ -40,6 +40,9 @@
         </Style>
 
         <!-- Toolbar styles -->
+        <Style Selector="StackPanel.toolbar">
+            <Setter Property="Background" Value="{DynamicResource ToolbarBackground}"/>
+        </Style>
         <Style Selector="DockPanel.toolbar">
             <Setter Property="Background" Value="{DynamicResource ToolbarBackground}"/>
 

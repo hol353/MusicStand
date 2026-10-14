@@ -238,16 +238,8 @@ public class MainViewModel : ReactiveObject
         set
         {
             this.RaiseAndSetIfChanged(ref _isSetListMode, value);
+            IsFileSelectMode = false;
         }
-    }
-
-    /// <summary>
-    /// Display the setlist viewer/editor.
-    /// </summary>
-    public void SetListDisplay()
-    {
-        IsSetListMode = true;
-        IsFileSelectMode = false;
     }
 
     /// <summary>
