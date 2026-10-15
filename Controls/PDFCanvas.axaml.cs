@@ -53,6 +53,12 @@ public partial class PDFCanvas : UserControl
         model.WhenAnyValue(x => x.IsEraserMode).Subscribe(_ => UpdateAnnotateMode());
         model.WhenAnyValue(x => x.IsHighlighterMode).Subscribe(_ => UpdateAnnotateMode());
         model.WhenAnyValue(x => x.IsStampMode).Subscribe(_ => UpdateAnnotateMode());
+        model.WhenAnyValue(x => x.IsTextStampMode).Subscribe(_ => UpdateAnnotateMode());
+        model.WhenAnyValue(x => x.TextStamp).Subscribe(_ =>
+        {
+            foreach (var page in musicCanvas.Children.OfType<PDFPageCanvas>())
+                page.InvalidateVisual();
+        });
         model.WhenAnyValue(x => x.SelectedBrush).Subscribe(brush => SetAnnotateBrush(brush));
     }
 
@@ -258,7 +264,7 @@ public partial class PDFCanvas : UserControl
     /// </summary>
     private void OnPanStarted(object sender, PanEventArgs e)
     {
-        if (!model.IsPenMode && !model.IsEraserMode && !model.IsStampMode && musicCanvas.Children.Count > 0)
+        if (!model.IsPenMode && !model.IsEraserMode && !model.IsStampMode && !model.IsTextStampMode && musicCanvas.Children.Count > 0)
         {
             panStartTime = DateTime.Now;
             if (Math.Round(zoomBorder.ZoomX, 2) == 1 && Math.Round(zoomBorder.ZoomY, 2) == 1)  
@@ -273,7 +279,7 @@ public partial class PDFCanvas : UserControl
     /// <param name="e"></param>
     private void OnPanEnded(object sender, PanEventArgs e)
     {
-        if (!model.IsPenMode && !model.IsEraserMode && !model.IsStampMode && musicCanvas.Children.Count > 0)
+        if (!model.IsPenMode && !model.IsEraserMode && !model.IsStampMode && !model.IsTextStampMode && musicCanvas.Children.Count > 0)
             panTime = DateTime.Now - panStartTime;
         CalculatePageIndexOfCurrentPage();
     }
@@ -306,6 +312,15 @@ public partial class PDFCanvas : UserControl
 
             foreach (var page in musicCanvas.Children.OfType<PDFPageCanvas>())
                 if (page.AddStampToPage(e.GetPosition(page)))
+                    break;
+            e.Handled = true;
+            return;
+        }
+
+        if (model.IsTextStampMode)
+        {
+            foreach (var page in musicCanvas.Children.OfType<PDFPageCanvas>())
+                if (page.AddTextStampToPage(e.GetPosition(page)))
                     break;
             e.Handled = true;
             return;

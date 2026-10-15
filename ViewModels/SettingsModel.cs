@@ -31,6 +31,9 @@ public class SettingsModel
     /// <summary>The currently selected setlist.</summary>
     public string SelectedSetList { get; set; }
 
+    /// <summary>The text to stamp on the canvas.</summary>
+    public string TextStamp { get; set; }
+
     /// <summary>
     /// Load the application settings from disk.
     /// </summary>

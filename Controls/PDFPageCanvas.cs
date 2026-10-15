@@ -314,6 +314,15 @@ public class PDFPageCanvas : InkCanvas
             var previewColor = Color.FromArgb((byte)(color.A * 0.7), color.R, color.G, color.B);
             context.DrawGeometry(new SolidColorBrush(previewColor), null, geometry);
         }
+        else if (isPointerOverPage && model.IsTextStampMode &&
+                 !string.IsNullOrWhiteSpace(model.TextStamp) && bitmapRenderRectangle.Contains(pointerPosition))
+        {
+            using var path = CreateTextPath(pointerPosition);
+            var geometry = Geometry.Parse(path.ToSvgPathData());
+            var color = model.SelectedBrush.Color;
+            var previewColor = Color.FromArgb((byte)(color.A * 0.7), color.R, color.G, color.B);
+            context.DrawGeometry(new SolidColorBrush(previewColor), null, geometry);
+        }
 
         //base.Render(context);
         //AvaloniaSkiaInkCanvas.Render(context);
@@ -339,6 +348,53 @@ public class PDFPageCanvas : InkCanvas
         AvaloniaSkiaInkCanvas.AddStaticStroke(stroke);
         SaveStrokes();
         return true;
+    }
+
+    /// <summary>
+    /// Adds the entered text to the page as a vector annotation.
+    /// </summary>
+    public bool AddTextStampToPage(Point position)
+    {
+        if (!bitmapRenderRectangle.Contains(position) || string.IsNullOrWhiteSpace(model.TextStamp))
+            return false;
+
+        using var path = CreateTextPath(position);
+        var color = model.SelectedBrush.Color;
+        var inkColor = new SKColor(color.R, color.G, color.B, color.A);
+        List<InkStylusPoint> points = new();
+        var stylusPointListSpan = new StylusPointListSpan(points, 0, points.Count);
+        var stroke = SkiaStroke.CreateStaticStroke(InkId.NewId(), path.Clone(), stylusPointListSpan, inkColor, 0.1f, true, inkStrokeRenderer: null);
+        AvaloniaSkiaInkCanvas.AddStaticStroke(stroke);
+        SaveStrokes();
+        return true;
+    }
+
+    /// <summary>
+    /// Creates a path for the text to be stamped on the page.
+    /// </summary>
+    /// <param name="position"></param>
+    /// <returns></returns>
+    private SKPath CreateTextPath(Point position)
+    {
+        var text = model.TextStamp;
+        using var font = new SKFont(SKTypeface.Default, 16);
+        var glyphs = new ushort[font.CountGlyphs(text)];
+        font.GetGlyphs(text, glyphs);
+        var glyphPositions = new SKPoint[glyphs.Length];
+        font.GetGlyphPositions(glyphs, glyphPositions, SKPoint.Empty);
+        var path = new SKPath();
+        for (int i = 0; i < glyphs.Length; i++)
+        {
+            using var glyphPath = font.GetGlyphPath(glyphs[i]);
+            if (glyphPath != null)
+                path.AddPath(glyphPath, glyphPositions[i].X, glyphPositions[i].Y, SKPathAddMode.Append);
+        }
+
+        var bounds = path.Bounds;
+        path.Transform(SKMatrix.CreateTranslation(
+            (float)(position.X - (bounds.Left + bounds.Right) / 2),
+            (float)(position.Y - (bounds.Top + bounds.Bottom) / 2)));
+        return path;
     }
 
     private SKPath GetHairpinPath(Point start, Point end)

@@ -28,6 +28,12 @@ public class MainViewModel : ReactiveObject
     /// <summary>Is the app in stamp mode?</summary>
     private bool _isStampMode;
 
+    /// <summary>Is the app in text stamp mode?</summary>
+    private bool _isTextStampMode;
+
+    /// <summary>The text to stamp on the canvas.</summary>
+    private string _textStamp = string.Empty;
+
     /// <summary>Is file select mode enabled?</summary>    
     private bool _isFileSelectMode;
 
@@ -87,6 +93,7 @@ public class MainViewModel : ReactiveObject
 
         MusicLibrary = new(this);
         SetLists = new(this);
+        _textStamp = Settings.TextStamp;
     }
 
     /// <summary>
@@ -114,6 +121,7 @@ public class MainViewModel : ReactiveObject
                 IsEraserMode = false;
                 IsHighlighterMode = false;
                 IsStampMode = false;
+                IsTextStampMode = false;
                 IsFileSelectMode = false;
             }
         }
@@ -132,6 +140,7 @@ public class MainViewModel : ReactiveObject
                 IsEraserMode = false;
                 IsHighlighterMode = false;
                 IsStampMode = false;
+                IsTextStampMode = false;
                 IsFileSelectMode = false;
                 SelectedBrush = SolidColorBrushCollection[Settings.SelectedPenColorIndex];
             }
@@ -154,6 +163,7 @@ public class MainViewModel : ReactiveObject
                 IsPenMode = false;
                 IsHighlighterMode = false;
                 IsStampMode = false;
+                IsTextStampMode = false;
                 IsFileSelectMode = false;
             }
             this.RaiseAndSetIfChanged(ref _isEraserMode, value);
@@ -173,6 +183,7 @@ public class MainViewModel : ReactiveObject
                 IsPenMode = false;
                 IsEraserMode = false;
                 IsStampMode = false;
+                IsTextStampMode = false;
                 IsFileSelectMode = false;
                 SelectedBrush = SolidColorBrushCollection[Settings.SelectedHighlighterColorIndex];
             }
@@ -195,9 +206,43 @@ public class MainViewModel : ReactiveObject
                 IsPenMode = false;
                 IsEraserMode = false;
                 IsHighlighterMode = false;
+                IsTextStampMode = false;
                 IsFileSelectMode = false;
             }
             this.RaiseAndSetIfChanged(ref _isStampMode, value);
+        }
+    }
+
+    /// <summary>
+    /// Is text stamp mode enabled?
+    /// </summary>
+    public bool IsTextStampMode
+    {
+        get => _isTextStampMode;
+        set
+        {
+            if (value)
+            {
+                IsPenMode = false;
+                IsEraserMode = false;
+                IsHighlighterMode = false;
+                IsStampMode = false;
+                IsFileSelectMode = false;
+            }
+            this.RaiseAndSetIfChanged(ref _isTextStampMode, value);
+        }
+    }
+
+    /// <summary>
+    /// The text to stamp on the canvas.
+    /// </summary>
+    public string TextStamp
+    {
+        get => _textStamp;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _textStamp, value);
+            Settings.TextStamp = value;
         }
     }
 
@@ -216,6 +261,7 @@ public class MainViewModel : ReactiveObject
                 IsPenMode = false;
                 IsEraserMode = false;
                 IsHighlighterMode = false;
+                IsTextStampMode = false;
             }
         }
     }
