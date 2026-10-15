@@ -10,6 +10,8 @@ using Avalonia.Skia;
 using DotNetCampus.Inking;
 using DotNetCampus.Inking.Contexts;
 using DotNetCampus.Inking.Primitive;
+using DotNetCampus.Numerics;
+using DotNetCampus.Numerics.Geometry;
 using SkiaSharp;
 
 namespace MusicStand;
@@ -172,6 +174,41 @@ public class PDFPageCanvas : InkCanvas
             var translation = CreateStretchMatrix(annotationBitmapRenderRectangle.ToSKRect(), newBitmapRenderRectangle.ToSKRect());
             foreach (var stroke in AvaloniaSkiaInkCanvas.StaticStrokeList)
                 stroke.SetTransform(translation);
+        }
+    }
+
+    protected override void OnPointerPressed(PointerPressedEventArgs e)
+    {
+        if (EditingMode == InkCanvasEditingMode.EraseByPoint &&
+            e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            FlattenStrokeTransforms();
+
+        base.OnPointerPressed(e);
+    }
+
+    private void FlattenStrokeTransforms()
+    {
+        foreach (var stroke in AvaloniaSkiaInkCanvas.StaticStrokeList)
+        {
+            var matrix = stroke.Transform;
+            if (matrix.IsIdentity)
+                continue;
+
+            // The point eraser rebuilds affected paths from point data, so both must use the displayed coordinates.
+            var similarity = new SimilarityTransformation2D(
+                matrix.ScaleX,
+                AngularMeasure.Zero,
+                new Vector2D(matrix.TransX, matrix.TransY));
+
+            using var transformedPath = stroke.Path.Clone();
+            transformedPath.Transform(matrix);
+
+            var originalPath = stroke.Path;
+            stroke.ApplyTransform(similarity);
+            originalPath.Dispose();
+
+            stroke.Path.Reset();
+            stroke.Path.AddPath(transformedPath);
         }
     }
 
