@@ -20,10 +20,10 @@ AI (Copilot/GPT) has been used to assist with specific coding tasks. Manual refa
 
 ## Screenshots
 
-![Light mode screenshot of home screen with a music file loaded](https://github.com/hol353/MusicStand/Docs/Img/HomeScreenshot.png)
-![Dark mode screenshot of home screen with a music file loaded](https://github.com/hol353/MusicStand/Docs/Img/HomeDarkScreenshot.png)
-![Screenshot of the file selection flyout](https://github.com/hol353/MusicStand/Docs/Img/FileSelectScreenshot.png)
-![Screenshot of the stamp selection flyout](https://github.com/hol353/MusicStand/Docs/Img/StampScreenshot.png)
+![Light mode screenshot of home screen with a music file loaded](https://github.com/hol353/MusicStand/blob/main/Docs/Img/HomeScreenshot.png)
+![Dark mode screenshot of home screen with a music file loaded](https://github.com/hol353/MusicStand/blob/main/Docs/Img/HomeDarkScreenshot.png)
+![Screenshot of the file selection flyout](https://github.com/hol353/MusicStand/blob/main/Docs/Img/FileSelectScreenshot.png)
+![Screenshot of the stamp selection flyout](https://github.com/hol353/MusicStand/blob/main/Docs/Img/StampScreenshot.png)
 
 ## How to build the project
 
