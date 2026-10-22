@@ -123,6 +123,7 @@ public class MainViewModel : ReactiveObject
                 IsStampMode = false;
                 IsTextStampMode = false;
                 IsFileSelectMode = false;
+                IsSetListMode = false;
             }
         }
     }
@@ -142,6 +143,7 @@ public class MainViewModel : ReactiveObject
                 IsStampMode = false;
                 IsTextStampMode = false;
                 IsFileSelectMode = false;
+                IsSetListMode = false;
                 SelectedBrush = SolidColorBrushCollection[Settings.SelectedPenColorIndex];
             }
             else if (value != _isPenMode)
@@ -165,6 +167,7 @@ public class MainViewModel : ReactiveObject
                 IsStampMode = false;
                 IsTextStampMode = false;
                 IsFileSelectMode = false;
+                IsSetListMode = false;
             }
             this.RaiseAndSetIfChanged(ref _isEraserMode, value);
         }
