@@ -22,9 +22,7 @@ public class MusicLibrary : ReactiveObject
     {
         this.model = model;
         BasePath = model.Settings.MusicLibraryBaseDirectory;
-        ReadDirectories(BasePath);
-        Directories.Sort(StringComparer.CurrentCulture);
-        ReadFiles();
+        RefreshDirectoriesFiles();
     }
 
     /// <summary>
@@ -81,6 +79,15 @@ public class MusicLibrary : ReactiveObject
         }
     }
 
+    /// <summary>
+    /// Refreshes the list of directories and files in the music library.
+    /// </summary>
+    public void RefreshDirectoriesFiles()
+    {
+        ReadDirectories(BasePath);
+        Directories.Sort(StringComparer.CurrentCulture);
+        ReadFiles();
+    }
 
     /// <summary>
     /// Opens a file in the music library. The file can be either a .pdf or a .txt (setlist) file.

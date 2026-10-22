@@ -258,6 +258,7 @@ public class MainViewModel : ReactiveObject
             this.RaiseAndSetIfChanged(ref _isFileSelectMode, value);
             if (IsFileSelectMode)
             {
+                MusicLibrary.RefreshDirectoriesFiles();
                 IsPenMode = false;
                 IsEraserMode = false;
                 IsHighlighterMode = false;
