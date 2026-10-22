@@ -429,7 +429,7 @@ public class PDFPageCanvas : InkCanvas
 
         var bounds = path.Bounds;
         path.Transform(SKMatrix.CreateTranslation(
-            (float)(position.X - (bounds.Left + bounds.Right) / 2),
+            (float)(position.X - bounds.Width),
             (float)(position.Y - (bounds.Top + bounds.Bottom) / 2)));
         return path;
     }
