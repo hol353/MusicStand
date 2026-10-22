@@ -101,6 +101,9 @@ public partial class PDFCanvas : UserControl
     /// </summary>
     private void SetAnnotateMode(InkCanvasEditingMode mode)
     {
+        zoomBorder.EnableZoom = !model.IsAnnotationMode;
+        zoomBorder.EnableGestureZoom = !model.IsAnnotationMode;
+
         foreach (InkCanvas inkCanvas in musicCanvas.Children)
         {
             inkCanvas.EditingMode = mode;
@@ -264,7 +267,7 @@ public partial class PDFCanvas : UserControl
     /// </summary>
     private void OnPanStarted(object sender, PanEventArgs e)
     {
-        if (!model.IsPenMode && !model.IsEraserMode && !model.IsStampMode && !model.IsTextStampMode && musicCanvas.Children.Count > 0)
+        if (!model.IsAnnotationMode && musicCanvas.Children.Count > 0)
         {
             panStartTime = DateTime.Now;
             if (Math.Round(zoomBorder.ZoomX, 2) == 1 && Math.Round(zoomBorder.ZoomY, 2) == 1)  
@@ -289,6 +292,12 @@ public partial class PDFCanvas : UserControl
     /// </summary>
     private void OnZoomChanged(object sender, ZoomEventArgs e)
     {
+        if (model.IsAnnotationMode)
+        {
+            PanOff();
+            return;
+        }
+
         if (Math.Round(zoomBorder.ZoomX, 2) > 1 || Math.Round(zoomBorder.ZoomY, 2) > 1)
             PanNormally();
         else
@@ -301,6 +310,12 @@ public partial class PDFCanvas : UserControl
     /// </summary>
     private void OnSingleTap(object sender, TappedEventArgs e)
     {
+        if (model.IsAnnotationMode && e.Pointer.Type != PointerType.Pen)
+        {
+            e.Handled = true;
+            return;
+        }
+
         // If stamp mode is on then add a stamp to the page at the cursor position.
         if (model.IsStampMode)
         {

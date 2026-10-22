@@ -249,6 +249,10 @@ public class MainViewModel : ReactiveObject
         }
     }
 
+    /// <summary>
+    /// Whether any annotation mode is enabled (pen, eraser, highlighter, stamp, or text stamp).
+    /// </summary>
+    public bool IsAnnotationMode => IsPenMode || IsEraserMode || IsHighlighterMode || IsStampMode || IsTextStampMode;
 
     /// <summary>
     /// Is file select mode enabled?

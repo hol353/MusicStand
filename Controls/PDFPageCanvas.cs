@@ -179,6 +179,12 @@ public class PDFPageCanvas : InkCanvas
 
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
+        if (model.IsAnnotationMode && e.Pointer.Type != PointerType.Pen)
+        {
+            e.Handled = true;
+            return;
+        }
+
         if (EditingMode == InkCanvasEditingMode.EraseByPoint &&
             e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
             FlattenStrokeTransforms();
