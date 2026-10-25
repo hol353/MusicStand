@@ -128,7 +128,8 @@ public class MusicLibrary : ReactiveObject
     /// </summary>
     private void ReadDirectories(string directory)
     {
-        foreach (var dir in Directory.GetDirectories(directory).Order())
+        Directories.Clear();
+        foreach (var dir in Directory.GetDirectories(directory, "*.*", SearchOption.AllDirectories).Order())
             Directories.Add(dir.ToRelative(BasePath));
     }
     

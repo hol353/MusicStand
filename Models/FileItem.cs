@@ -79,7 +79,7 @@ public class FileItem
     public bool StartsWith(string letter)
     {
         if (letter == "#")
-            return int.TryParse(FileNameForSorting, out int i);
+            return !char.IsLetter(FileNameForSorting[0]);  
         else
             return FileNameForSorting.StartsWith(letter, ignoreCase: true, CultureInfo.CurrentCulture);
     }
