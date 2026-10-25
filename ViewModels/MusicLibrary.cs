@@ -129,8 +129,12 @@ public class MusicLibrary : ReactiveObject
     private void ReadDirectories(string directory)
     {
         Directories.Clear();
-        foreach (var dir in Directory.GetDirectories(directory, "*.*", SearchOption.AllDirectories).Order())
-            Directories.Add(dir.ToRelative(BasePath));
+        foreach (var dir in Directory.GetDirectories(directory, "*.*", SearchOption.AllDirectories))
+        {
+            if (Directory.EnumerateFiles(dir, "*.pdf", SearchOption.TopDirectoryOnly).Any())
+                Directories.Add(dir.ToRelative(BasePath));
+        }
+        Directories.Order();
     }
     
     /// <summary>
@@ -141,7 +145,7 @@ public class MusicLibrary : ReactiveObject
         var absoluteSelectedDirectory = model.Settings.SelectedDirectory?.ToAbsolute(BasePath);
         if (absoluteSelectedDirectory != null && Directory.Exists(absoluteSelectedDirectory))
         {
-            allFiles = Directory.GetFiles(absoluteSelectedDirectory)
+            allFiles = Directory.GetFiles(absoluteSelectedDirectory, "*.pdf")
                                 .Select(file => new FileItem(file, BasePath))
                                 .OrderBy(file => file.FileNameForSorting);
         }
