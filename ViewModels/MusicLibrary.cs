@@ -97,7 +97,7 @@ public class MusicLibrary : ReactiveObject
     {
         if (File.Exists(fileName))
         {
-            List<MusicFile> openFiles = new();
+            List<MusicFile> openFiles = OpenFiles?.ToList() ?? new List<MusicFile>();
             if (Path.GetExtension(fileName).ToLower() == ".pdf")
                 openFiles.Add(new MusicFile(model, fileName));
             else 

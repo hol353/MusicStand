@@ -16,9 +16,9 @@ using SkiaSharp;
 
 namespace MusicStand;
 
-internal sealed class LinkMarker(Point position, Color color)
+internal sealed class LinkMarker(Point relativePosition, Color color)
 {
-    public Point Position { get; } = position;
+    public Point RelativePosition { get; } = relativePosition;
     public Color Color { get; } = color;
 }
 
@@ -55,8 +55,9 @@ public class PDFPageCanvas : InkCanvas
     /// <summary>
     /// Constructor.
     /// </summary>
-    /// <param name="image">The music bitmap to show.</param>
-    /// <param name="svg">The annotations from the .svg to show.</param>
+    /// <param name="pdfAnnotator">The PDF canvas that hosts this page.</param>
+    /// <param name="page">The music page, including its loaded annotations.</param>
+    /// <param name="model">The application view model.</param>
     public PDFPageCanvas(PDFCanvas pdfAnnotator, MusicPage page, MainViewModel model)
     {
         this.page = page;
@@ -73,6 +74,8 @@ public class PDFPageCanvas : InkCanvas
             }        
         }
     }
+
+    internal MusicPage MusicPage => page;
 
     /// <summary>
     /// Determines if the given y point is within the bounds of the bitmap render rectangle.
@@ -244,7 +247,7 @@ public class PDFPageCanvas : InkCanvas
     }
 
     /// <summary>
-    /// Called when a stroke is collected. Saves the current annotations to the .svg file.
+    /// Called when a stroke is collected. Updates the page annotations.
     /// </summary>
     private void OnStrokeCollected(object sender, AvaloniaSkiaInkCanvasStrokeCollectedEventArgs e)
     {
@@ -252,7 +255,7 @@ public class PDFPageCanvas : InkCanvas
     }
 
     /// <summary>
-    /// Called when a stroke is erased. Saves the current annotations to the .svg file.
+    /// Called when a stroke is erased. Updates the page annotations.
     /// </summary>
     private void OnStrokeErased(object sender, ErasingCompletedEventArgs e)
     {
@@ -260,7 +263,7 @@ public class PDFPageCanvas : InkCanvas
     }
 
     /// <summary>
-    /// Saves the current annotations to the .svg file.
+    /// Updates the current annotations; the music store writes them when the PDF is closed.
     /// </summary>
     private void SaveStrokes()
     {
@@ -322,13 +325,43 @@ public class PDFPageCanvas : InkCanvas
 
     internal LinkMarker AddLinkMarker(Point position, Color color)
     {
-        if (!bitmapRenderRectangle.Contains(position))
+        if (!bitmapRenderRectangle.Contains(position) ||
+            bitmapRenderRectangle.Width <= 0 ||
+            bitmapRenderRectangle.Height <= 0)
             return null;
 
-        var marker = new LinkMarker(position, color);
+        var relativePosition = new Point(
+            (position.X - bitmapRenderRectangle.Left) / bitmapRenderRectangle.Width,
+            (position.Y - bitmapRenderRectangle.Top) / bitmapRenderRectangle.Height);
+        var marker = new LinkMarker(relativePosition, color);
         linkMarkers.Add(marker);
         InvalidateVisual();
         return marker;
+    }
+
+    internal LinkMarker AddStoredLinkMarker(Point relativePosition, Color color)
+    {
+        var marker = new LinkMarker(relativePosition, color);
+        linkMarkers.Add(marker);
+        InvalidateVisual();
+        return marker;
+    }
+
+    internal MusicLinkEndpoint CreateLinkEndpoint(LinkMarker marker)
+    {
+        return new MusicLinkEndpoint(
+            page.Store.PdfPath,
+            page.PageNumber,
+            marker.RelativePosition.X,
+            marker.RelativePosition.Y,
+            marker.Color);
+    }
+
+    internal Point GetLinkMarkerPosition(LinkMarker marker)
+    {
+        return new Point(
+            bitmapRenderRectangle.Left + marker.RelativePosition.X * bitmapRenderRectangle.Width,
+            bitmapRenderRectangle.Top + marker.RelativePosition.Y * bitmapRenderRectangle.Height);
     }
 
     internal void RemoveLinkMarker(LinkMarker marker)
@@ -340,8 +373,9 @@ public class PDFPageCanvas : InkCanvas
     internal bool IsLinkMarkerAt(LinkMarker marker, Point position)
     {
         const double hitRadius = 20;
-        var deltaX = position.X - marker.Position.X;
-        var deltaY = position.Y - marker.Position.Y;
+        var markerPosition = GetLinkMarkerPosition(marker);
+        var deltaX = position.X - markerPosition.X;
+        var deltaY = position.Y - markerPosition.Y;
         return linkMarkers.Contains(marker) && deltaX * deltaX + deltaY * deltaY <= hitRadius * hitRadius;
     }
 
@@ -376,8 +410,9 @@ public class PDFPageCanvas : InkCanvas
         {
             const double radius = 12;
             var color = Color.FromArgb((byte)(marker.Color.A * 0.6), marker.Color.R, marker.Color.G, marker.Color.B);
+            var markerPosition = GetLinkMarkerPosition(marker);
             context.DrawEllipse(new SolidColorBrush(color), null,
-                new Rect(marker.Position.X - radius, marker.Position.Y - radius, radius * 2, radius * 2));
+                new Rect(markerPosition.X - radius, markerPosition.Y - radius, radius * 2, radius * 2));
         }
 
         // If in stamp model, then render a stamp preview at the current pointer position.

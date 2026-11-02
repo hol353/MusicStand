@@ -16,7 +16,7 @@ AI (Copilot/GPT) has been used to assist with specific coding tasks. Manual refa
 - Add music symbols and text stamps to a page.
 - Zoom and pan around sheet music.
 - Create and use setlists to organize music for a performance.
-- Annotations are saved separately from the original PDF.
+- Annotations and page links are saved in one XML music store per PDF, separately from the original PDF.
 
 ## Screenshots
 

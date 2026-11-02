@@ -25,8 +25,11 @@ public class MusicFile
     {
         this.path = path;
         this.model = model;
+        Store = MusicStore.Create(model, path);
         Load(path);
     }
+
+    public MusicStore Store { get; }
 
     /// <summary>
     /// The list of pages in the file.
@@ -38,8 +41,9 @@ public class MusicFile
     /// </summary>
     public void Save()
     {
-        foreach ( var page in Pages)
+        foreach (var page in Pages)
             page.Save();
+        Store.Save();
     }
 
     /// <summary>
@@ -72,7 +76,7 @@ public class MusicFile
                 using (var framebuffer = bitmap.Lock())
                     document.Render(page, 1.7, MuPDFCore.PixelFormats.RGBA, framebuffer.Address, false);
 
-                Pages.Add(new MusicPage(model, pdfFilePath, bitmap, page + 1));
+                Pages.Add(new MusicPage(Store, bitmap, page + 1));
             }
         }
     }    

@@ -1,34 +1,28 @@
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using Avalonia;
 using Avalonia.Media.Imaging;
-using SkiaSharp;
 
 namespace MusicStand;
 
 public class MusicPage
 {
-    public int pageNumber;
-    private MainViewModel model;
-    private string fileName;
-    
-
     /// <summary>
     /// Initializes a new instance of the <see cref="MusicPage"/> class.
     /// </summary>
-    /// <param name="model"></param>
-    /// <param name="fileName"></param>
+    /// <param name="store"></param>
     /// <param name="bitmap"></param>
     /// <param name="pageNumber"></param>
-    public MusicPage(MainViewModel model, string fileName, Bitmap bitmap, int pageNumber)
+    public MusicPage(MusicStore store, Bitmap bitmap, int pageNumber)
     {
+        Store = store;
         this.Bitmap = bitmap;
-        this.pageNumber = pageNumber;
-        this.fileName = fileName;
-        this.model = model;
-        Annotations = Annotations.Create(model, fileName, pageNumber);
+        PageNumber = pageNumber;
+        Annotations = store.GetAnnotations(pageNumber);
     }
+
+    internal MusicStore Store { get; }
+
+    public int PageNumber { get; }
 
     public Bitmap Bitmap { get; }
 
@@ -39,8 +33,7 @@ public class MusicPage
     /// </summary>
     public void Save()
     {
-        if (fileName != null)
-            Annotations?.Save(model, fileName, pageNumber);
+        Store.SetAnnotations(PageNumber, Annotations);
     }    
 
 }

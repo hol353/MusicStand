@@ -11,37 +11,21 @@ using SkiaSharp;
 namespace MusicStand;
 
 /// <summary>
-/// Represents all annotations in an SVG file.
+/// Represents the SVG annotations for one PDF page.
 /// </summary>
-/// <param name="Model">The model instance.</param>
 public class Annotations
 {
     private XmlDocument svg = new();
 
-    public int Width => Int32.Parse(svg.DocumentElement.GetAttribute(("width").ToString()));
+    internal XmlElement SvgElement => svg.DocumentElement;
 
-    public int Height => Int32.Parse(svg.DocumentElement.GetAttribute(("height").ToString()));
+    public int Width => Int32.Parse(svg.DocumentElement.GetAttribute("width"));
+
+    public int Height => Int32.Parse(svg.DocumentElement.GetAttribute("height"));
 
     public IEnumerable<SVGPath> Paths => svg.GetElementsByTagName("path")
                                             .Cast<XmlNode>()
                                             .Select(n => new SVGPath(n));
-
-    /// <summary>
-    /// Creates an SVG instance from a file.
-    /// </summary>
-    /// <param name="pageNumber">The page number.</param>
-    public static Annotations Create(MainViewModel model, string pdfPath, int pageNumber)
-    {
-        var pdfRelativeDirectory = Path.GetDirectoryName(pdfPath).ToRelative(model.Settings.MusicLibraryBaseDirectory);
-        var pdfFileName = Path.GetFileNameWithoutExtension(pdfPath);
-        var svgFileName = Path.Combine(model.BaseDirectory, "Annotations", pdfRelativeDirectory, $"{pdfFileName}.{pageNumber}.svg");
-        if (File.Exists(svgFileName))
-        {
-            using var s = File.OpenRead(svgFileName);
-            return Create(s);
-        }
-        return null;
-    }
 
     /// <summary>
     /// Creates an SVG instance from a stream.
@@ -53,6 +37,14 @@ public class Annotations
         svg.svg = new XmlDocument();
         svg.svg.Load(s);
         return svg;
+    }
+
+    internal static Annotations Create(XmlElement svgElement)
+    {
+        var annotations = new Annotations();
+        annotations.svg = new XmlDocument();
+        annotations.svg.AppendChild(annotations.svg.ImportNode(svgElement, true));
+        return annotations;
     }
 
     /// <summary>
@@ -87,29 +79,6 @@ public class Annotations
             return Create(ms);
         }
         return null;
-    }
-
-    /// <summary>
-    /// Saves the SVG to a file.
-    /// </summary>
-    /// <param name="model"></param>
-    /// <param name="pdfPath"></param>
-    /// <param name="pageNumber"></param>
-    public void Save(MainViewModel model, string pdfPath, int pageNumber)
-    {
-        var pdfRelativeDirectory = Path.GetDirectoryName(pdfPath).ToRelative(model.Settings.MusicLibraryBaseDirectory);
-        var pdfFileName = Path.GetFileNameWithoutExtension(pdfPath);
-        
-        var annotationsBaseDirectory = Path.Combine(model.BaseDirectory, "Annotations");
-        var annotationPdfDirectory = Path.Combine(annotationsBaseDirectory, pdfRelativeDirectory);
-
-        Directory.CreateDirectory(annotationPdfDirectory);
-
-        var saveSvgFile = Path.Combine(annotationPdfDirectory, $"{pdfFileName}.{pageNumber}.svg");            
-
-        if (File.Exists(saveSvgFile))
-            File.Delete(saveSvgFile);
-        svg.Save(saveSvgFile);
     }
 
     public class SVGPath(XmlNode pathNode)

@@ -111,6 +111,7 @@ public partial class PDFCanvas : UserControl
         musicCanvas.Children.Clear();
         foreach (var pdfFilePath in pdfFilePaths)
             Load(pdfFilePath);
+        LoadStoredLinks();
     }
 
     /// <summary>
@@ -375,6 +376,11 @@ public partial class PDFCanvas : UserControl
                     pendingLink = endpoint;
                 else
                 {
+                    var storedLink = new MusicLink(
+                        pendingLink.Page.CreateLinkEndpoint(pendingLink.Marker),
+                        endpoint.Page.CreateLinkEndpoint(endpoint.Marker));
+                    pendingLink.Page.MusicPage.Store.AddLink(storedLink);
+                    endpoint.Page.MusicPage.Store.AddLink(storedLink);
                     links.Add(new PdfLink(pendingLink, endpoint));
                     pendingLink = null;
                     model.IsLinkMode = false;
@@ -455,7 +461,7 @@ public partial class PDFCanvas : UserControl
 
     private void NavigateToEndpoint(LinkEndpoint endpoint)
     {
-        var point = endpoint.Page.TranslatePoint(endpoint.Marker.Position, zoomBorder);
+        var point = endpoint.Page.TranslatePoint(endpoint.Page.GetLinkMarkerPosition(endpoint.Marker), zoomBorder);
         if (point is not Point targetPoint)
             return;
 
@@ -463,6 +469,33 @@ public partial class PDFCanvas : UserControl
         var deltaY = zoomBorder.Bounds.Height / 2 - targetPoint.Y;
         zoomBorder.PanDelta(deltaX, deltaY);
         CalculatePageIndexOfCurrentPage();
+    }
+
+    private void LoadStoredLinks()
+    {
+        var pages = musicCanvas.Children.OfType<PDFPageCanvas>()
+            .GroupBy(page => (page.MusicPage.Store.PdfPath, page.MusicPage.PageNumber))
+            .ToDictionary(group => group.Key, group => group.First());
+        var storedLinks = (model.MusicLibrary.OpenFiles ?? Enumerable.Empty<MusicFile>())
+            .SelectMany(file => file.Store.Links)
+            .Distinct();
+
+        foreach (var storedLink in storedLinks)
+        {
+            if (!pages.TryGetValue((storedLink.First.PdfPath, storedLink.First.PageNumber), out var firstPage) ||
+                !pages.TryGetValue((storedLink.Second.PdfPath, storedLink.Second.PageNumber), out var secondPage))
+                continue;
+
+            var firstMarker = firstPage.AddStoredLinkMarker(
+                new Point(storedLink.First.X, storedLink.First.Y),
+                storedLink.First.Color);
+            var secondMarker = secondPage.AddStoredLinkMarker(
+                new Point(storedLink.Second.X, storedLink.Second.Y),
+                storedLink.Second.Color);
+            links.Add(new PdfLink(
+                new LinkEndpoint(firstPage, firstMarker),
+                new LinkEndpoint(secondPage, secondMarker)));
+        }
     }
 
     private void CancelPendingLink()
