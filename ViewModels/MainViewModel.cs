@@ -31,6 +31,9 @@ public class MainViewModel : ReactiveObject
     /// <summary>Is the app in text stamp mode?</summary>
     private bool _isTextStampMode;
 
+    /// <summary>Is the app in link mode?</summary>
+    private bool _isLinkMode;
+
     /// <summary>The text to stamp on the canvas.</summary>
     private string _textStamp = string.Empty;
 
@@ -122,6 +125,7 @@ public class MainViewModel : ReactiveObject
                 IsHighlighterMode = false;
                 IsStampMode = false;
                 IsTextStampMode = false;
+                IsLinkMode = false;
                 IsFileSelectMode = false;
                 IsSetListMode = false;
             }
@@ -142,6 +146,7 @@ public class MainViewModel : ReactiveObject
                 IsHighlighterMode = false;
                 IsStampMode = false;
                 IsTextStampMode = false;
+                IsLinkMode = false;
                 IsFileSelectMode = false;
                 IsSetListMode = false;
                 SelectedBrush = SolidColorBrushCollection[Settings.SelectedPenColorIndex];
@@ -166,6 +171,7 @@ public class MainViewModel : ReactiveObject
                 IsHighlighterMode = false;
                 IsStampMode = false;
                 IsTextStampMode = false;
+                IsLinkMode = false;
                 IsFileSelectMode = false;
                 IsSetListMode = false;
             }
@@ -187,6 +193,7 @@ public class MainViewModel : ReactiveObject
                 IsEraserMode = false;
                 IsStampMode = false;
                 IsTextStampMode = false;
+                IsLinkMode = false;
                 IsFileSelectMode = false;
                 SelectedBrush = SolidColorBrushCollection[Settings.SelectedHighlighterColorIndex];
             }
@@ -210,6 +217,7 @@ public class MainViewModel : ReactiveObject
                 IsEraserMode = false;
                 IsHighlighterMode = false;
                 IsTextStampMode = false;
+                IsLinkMode = false;
                 IsFileSelectMode = false;
             }
             this.RaiseAndSetIfChanged(ref _isStampMode, value);
@@ -230,9 +238,35 @@ public class MainViewModel : ReactiveObject
                 IsEraserMode = false;
                 IsHighlighterMode = false;
                 IsStampMode = false;
+                IsLinkMode = false;
                 IsFileSelectMode = false;
             }
             this.RaiseAndSetIfChanged(ref _isTextStampMode, value);
+        }
+    }
+
+    /// <summary>
+    /// Is link mode enabled?
+    /// </summary>
+    public bool IsLinkMode
+    {
+        get => _isLinkMode;
+        set
+        {
+            if (value)
+            {
+                IsPenMode = false;
+                IsEraserMode = false;
+                IsHighlighterMode = false;
+                IsStampMode = false;
+                IsTextStampMode = false;
+                IsFileSelectMode = false;
+                IsSetListMode = false;
+                SelectedBrush = SolidColorBrushCollection[Settings.SelectedLinkColorIndex];
+            }
+            else if (value != _isLinkMode)
+                Settings.SelectedLinkColorIndex = SolidColorBrushCollection.IndexOf(SelectedBrush);            
+            this.RaiseAndSetIfChanged(ref _isLinkMode, value);
         }
     }
 
@@ -270,6 +304,7 @@ public class MainViewModel : ReactiveObject
                 IsEraserMode = false;
                 IsHighlighterMode = false;
                 IsTextStampMode = false;
+                IsLinkMode = false;
             }
         }
     }
@@ -292,6 +327,8 @@ public class MainViewModel : ReactiveObject
         set
         {
             this.RaiseAndSetIfChanged(ref _isSetListMode, value);
+            if (value)
+                IsLinkMode = false;
             IsFileSelectMode = false;
         }
     }

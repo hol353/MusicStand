@@ -22,6 +22,9 @@ namespace MusicStand;
 /// </summary>
 public partial class PDFCanvas : UserControl
 {
+    private sealed record LinkEndpoint(PDFPageCanvas Page, LinkMarker Marker);
+    private sealed record PdfLink(LinkEndpoint First, LinkEndpoint Second);
+
     private MainViewModel model;
     private ZoomBorder zoomBorder;
     private StackPanel musicCanvas;
@@ -32,6 +35,9 @@ public partial class PDFCanvas : UserControl
 
     /// <summary>The time the user spent panning. Used to determine if a tap is a pan or a single tap.</summary>
     private TimeSpan panTime;
+
+    private readonly List<PdfLink> links = new();
+    private LinkEndpoint pendingLink;
 
     /// <summary>
     /// Constructor
@@ -54,6 +60,15 @@ public partial class PDFCanvas : UserControl
         model.WhenAnyValue(x => x.IsHighlighterMode).Subscribe(_ => UpdateAnnotateMode());
         model.WhenAnyValue(x => x.IsStampMode).Subscribe(_ => UpdateAnnotateMode());
         model.WhenAnyValue(x => x.IsTextStampMode).Subscribe(_ => UpdateAnnotateMode());
+        model.WhenAnyValue(x => x.IsLinkMode).Subscribe(isLinkMode =>
+        {
+            if (!isLinkMode)
+                CancelPendingLink();
+
+            UpdateAnnotateMode();
+            if (!model.IsAnnotationMode && musicCanvas.Children.Count > 0)
+                ConfigureNavigationPanning();
+        });
         model.WhenAnyValue(x => x.TextStamp).Subscribe(_ =>
         {
             foreach (var page in musicCanvas.Children.OfType<PDFPageCanvas>())
@@ -91,6 +106,8 @@ public partial class PDFCanvas : UserControl
     private void Load(IEnumerable<string> pdfFilePaths)
     {
         model.MusicLibrary.CloseAll();
+        links.Clear();
+        pendingLink = null;
         musicCanvas.Children.Clear();
         foreach (var pdfFilePath in pdfFilePaths)
             Load(pdfFilePath);
@@ -128,6 +145,9 @@ public partial class PDFCanvas : UserControl
             SetAnnotateMode(InkCanvasEditingMode.None);
         else
             SetAnnotateMode(InkCanvasEditingMode.None);
+
+        if (model.IsLinkMode && musicCanvas.Children.Count > 0)
+            ConfigureNavigationPanning();
     }
 
     private void ApplyInkSettings(InkCanvas inkCanvas)
@@ -270,6 +290,7 @@ public partial class PDFCanvas : UserControl
         if (!model.IsAnnotationMode && musicCanvas.Children.Count > 0)
         {
             panStartTime = DateTime.Now;
+            panTime = TimeSpan.Zero;
             if (Math.Round(zoomBorder.ZoomX, 2) == 1 && Math.Round(zoomBorder.ZoomY, 2) == 1)  
                 PanInYDirectionOnly(); // No zoom applied. Pan in Y direction only
         }
@@ -341,6 +362,38 @@ public partial class PDFCanvas : UserControl
             return;
         }
 
+        if (model.IsLinkMode)
+        {
+            foreach (var page in musicCanvas.Children.OfType<PDFPageCanvas>())
+            {
+                var marker = page.AddLinkMarker(e.GetPosition(page), model.SelectedBrush.Color);
+                if (marker == null)
+                    continue;
+
+                var endpoint = new LinkEndpoint(page, marker);
+                if (pendingLink == null)
+                    pendingLink = endpoint;
+                else
+                {
+                    links.Add(new PdfLink(pendingLink, endpoint));
+                    pendingLink = null;
+                    model.IsLinkMode = false;
+                }
+
+                e.Handled = true;
+                return;
+            }
+
+            e.Handled = true;
+            return;
+        }
+
+        if (TryNavigateToLinkedMarker(e))
+        {
+            e.Handled = true;
+            return;
+        }
+
         // detect if the user is currently panning, and if so, ignore the tap
         if (panTime.TotalMilliseconds < 400)
         {
@@ -378,6 +431,55 @@ public partial class PDFCanvas : UserControl
             }
         }
         e.Handled = true;
+    }
+
+    private bool TryNavigateToLinkedMarker(TappedEventArgs e)
+    {
+        foreach (var link in links.AsEnumerable().Reverse())
+        {
+            if (link.First.Page.IsLinkMarkerAt(link.First.Marker, e.GetPosition(link.First.Page)))
+            {
+                NavigateToEndpoint(link.Second);
+                return true;
+            }
+
+            if (link.Second.Page.IsLinkMarkerAt(link.Second.Marker, e.GetPosition(link.Second.Page)))
+            {
+                NavigateToEndpoint(link.First);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void NavigateToEndpoint(LinkEndpoint endpoint)
+    {
+        var point = endpoint.Page.TranslatePoint(endpoint.Marker.Position, zoomBorder);
+        if (point is not Point targetPoint)
+            return;
+
+        var deltaX = zoomBorder.Bounds.Width / 2 - targetPoint.X;
+        var deltaY = zoomBorder.Bounds.Height / 2 - targetPoint.Y;
+        zoomBorder.PanDelta(deltaX, deltaY);
+        CalculatePageIndexOfCurrentPage();
+    }
+
+    private void CancelPendingLink()
+    {
+        if (pendingLink == null)
+            return;
+
+        pendingLink.Page.RemoveLinkMarker(pendingLink.Marker);
+        pendingLink = null;
+    }
+
+    private void ConfigureNavigationPanning()
+    {
+        if (Math.Round(zoomBorder.ZoomX, 2) > 1 || Math.Round(zoomBorder.ZoomY, 2) > 1)
+            PanNormally();
+        else
+            PanInYDirectionOnly();
     }
 
     /// <summary>

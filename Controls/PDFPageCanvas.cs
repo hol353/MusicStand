@@ -16,6 +16,12 @@ using SkiaSharp;
 
 namespace MusicStand;
 
+internal sealed class LinkMarker(Point position, Color color)
+{
+    public Point Position { get; } = position;
+    public Color Color { get; } = color;
+}
+
 /// <summary>
 /// Encapsulates a user control that shows a page of music and allows annotations.
 /// </summary>
@@ -44,6 +50,7 @@ public class PDFPageCanvas : InkCanvas
     private bool isHairpinDrawing;
     private Point hairpinStartPosition;
     private Point hairpinCurrentPosition;
+    private readonly List<LinkMarker> linkMarkers = new();
 
     /// <summary>
     /// Constructor.
@@ -313,6 +320,31 @@ public class PDFPageCanvas : InkCanvas
         return new Rect(new Point((availableWidth - width) / 2, 0), new Size(width, height));
     }
 
+    internal LinkMarker AddLinkMarker(Point position, Color color)
+    {
+        if (!bitmapRenderRectangle.Contains(position))
+            return null;
+
+        var marker = new LinkMarker(position, color);
+        linkMarkers.Add(marker);
+        InvalidateVisual();
+        return marker;
+    }
+
+    internal void RemoveLinkMarker(LinkMarker marker)
+    {
+        if (linkMarkers.Remove(marker))
+            InvalidateVisual();
+    }
+
+    internal bool IsLinkMarkerAt(LinkMarker marker, Point position)
+    {
+        const double hitRadius = 20;
+        var deltaX = position.X - marker.Position.X;
+        var deltaY = position.Y - marker.Position.Y;
+        return linkMarkers.Contains(marker) && deltaX * deltaX + deltaY * deltaY <= hitRadius * hitRadius;
+    }
+
     /// <summary>
     /// Called when positioning child elements as part of a layout pass.
     /// </summary>
@@ -338,6 +370,14 @@ public class PDFPageCanvas : InkCanvas
 
             context.DrawRectangle(Brushes.White, null, bitmapRenderRectangle);
             context.DrawImage(page.Bitmap, new Rect(0, 0, page.Bitmap.Size.Width, page.Bitmap.Size.Height), bitmapRenderRectangle);
+        }
+
+        foreach (var marker in linkMarkers)
+        {
+            const double radius = 12;
+            var color = Color.FromArgb((byte)(marker.Color.A * 0.6), marker.Color.R, marker.Color.G, marker.Color.B);
+            context.DrawEllipse(new SolidColorBrush(color), null,
+                new Rect(marker.Position.X - radius, marker.Position.Y - radius, radius * 2, radius * 2));
         }
 
         // If in stamp model, then render a stamp preview at the current pointer position.
