@@ -43,6 +43,6 @@ public partial class MainView : UserControl
     {
         var model = DataContext as MainViewModel;
         model.MusicLibrary.CloseAll();
-        model.Settings.Save(model.BaseDirectory);
+        SettingsPersistence.Write(model.Settings, model.Settings.HomeDirectory);
     }
 }

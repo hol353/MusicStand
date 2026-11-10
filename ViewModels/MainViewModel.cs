@@ -13,9 +13,6 @@ namespace MusicStand;
 
 public class MainViewModel : ReactiveObject
 {
-    /// <summary>Name of application.</summary>
-    private string applicationName;
-
     /// <summary>Is the app in pen mode?</summary>
     private bool _isPenMode;
 
@@ -90,8 +87,10 @@ public class MainViewModel : ReactiveObject
             Stamp.CreateCrescendo(),
             Stamp.CreateDecrescendo()
         ];
-        this.applicationName = Path.GetFileNameWithoutExtension(Assembly.GetExecutingAssembly().Location);
-        Settings = SettingsModel.Create(BaseDirectory);
+
+        string applicationName = "MusicStand";
+        string homeDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), applicationName);
+        Settings = SettingsPersistence.Read(homeDirectory);
         _selectedStamp = StampCollection[Settings.SelectedStampIndex];
 
         MusicLibrary = new(this);
@@ -392,13 +391,8 @@ public class MainViewModel : ReactiveObject
     public ObservableCollection<Stamp> StampCollection { get; }
 
     /// <summary>
-    /// The directory where the application stores settings/annotations.
-    /// </summary>
-    public string BaseDirectory => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), applicationName );
-
-    /// <summary>
     /// The application settings
     /// </summary>
-    public SettingsModel Settings { get; }
+    public Settings Settings { get; }
 
 }

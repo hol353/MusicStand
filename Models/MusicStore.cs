@@ -52,15 +52,17 @@ public sealed class MusicStore
 
     public static MusicStore Create(MainViewModel model, string pdfPath)
     {
-        var pdfRelativeDirectory = Path.GetDirectoryName(pdfPath)
+        throw new NotImplementedException();
+        /*var pdfRelativeDirectory = Path.GetDirectoryName(pdfPath)
             .ToRelative(model.Settings.MusicLibraryBaseDirectory);
         var pdfFileName = Path.GetFileNameWithoutExtension(pdfPath);
-        var storeDirectory = Path.Combine(model.BaseDirectory, "Annotations", pdfRelativeDirectory);
+        var storeDirectory = Path.Combine(model.HomeDirectory, "Annotations", pdfRelativeDirectory);
         var storeFilePath = Path.Combine(storeDirectory, $"{pdfFileName}.xml");
         var relativePdfPath = Path.GetRelativePath(model.Settings.MusicLibraryBaseDirectory, pdfPath)
             .Replace('\\', '/');
 
         return new MusicStore(storeFilePath, relativePdfPath);
+        */
     }
 
     public Annotations GetAnnotations(int pageNumber)

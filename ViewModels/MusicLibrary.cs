@@ -21,14 +21,8 @@ public class MusicLibrary : ReactiveObject
     public MusicLibrary(MainViewModel model)
     {
         this.model = model;
-        BasePath = model.Settings.MusicLibraryBaseDirectory;
         RefreshDirectoriesFiles();
     }
-
-    /// <summary>
-    /// The top-level path of the music library.
-    /// </summary>
-    public string BasePath { get; set; }
 
     /// <summary>
     /// The list of directories (relative to BasePath) in the music library.
@@ -84,7 +78,7 @@ public class MusicLibrary : ReactiveObject
     /// </summary>
     public void RefreshDirectoriesFiles()
     {
-        ReadDirectories(BasePath);
+        ReadDirectories(model.Settings.MusicLibraryBaseDirectory);
         Directories.Sort(StringComparer.CurrentCulture);
         ReadFiles();
     }
@@ -132,7 +126,7 @@ public class MusicLibrary : ReactiveObject
         foreach (var dir in Directory.GetDirectories(directory, "*.*", SearchOption.AllDirectories))
         {
             if (Directory.EnumerateFiles(dir, "*.pdf", SearchOption.TopDirectoryOnly).Any())
-                Directories.Add(dir.ToRelative(BasePath));
+                Directories.Add(dir.ToRelative(model.Settings.MusicLibraryBaseDirectory));
         }
         Directories.Order();
     }
@@ -142,11 +136,11 @@ public class MusicLibrary : ReactiveObject
     /// </summary>
     private void ReadFiles()
     {
-        var absoluteSelectedDirectory = model.Settings.SelectedDirectory?.ToAbsolute(BasePath);
+        var absoluteSelectedDirectory = model.Settings.SelectedDirectory?.ToAbsolute(model.Settings.MusicLibraryBaseDirectory);
         if (absoluteSelectedDirectory != null && Directory.Exists(absoluteSelectedDirectory))
         {
             allFiles = Directory.GetFiles(absoluteSelectedDirectory, "*.pdf")
-                                .Select(file => new FileItem(file, BasePath))
+                                .Select(file => new FileItem(file, model.Settings.MusicLibraryBaseDirectory))
                                 .OrderBy(file => file.FileNameForSorting);
         }
         else

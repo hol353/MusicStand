@@ -153,7 +153,7 @@ public class SetListsModel : ReactiveObject
     /// </summary>
     public void ShowMusic()
     {
-        model.SelectedFile = new FileItem(SelectedPath, model.MusicLibrary.BasePath);
+        model.SelectedFile = new FileItem(SelectedPath, model.Settings.MusicLibraryBaseDirectory);
         model.IsSetListMode = false;
     }
 
@@ -164,7 +164,7 @@ public class SetListsModel : ReactiveObject
     {
         if (titleIndex >= 0 && titleIndex < selectedSetListFilePaths.Count)
         {
-            model.SelectedFile = new FileItem(selectedSetListFilePaths[titleIndex], model.MusicLibrary.BasePath);
+            model.SelectedFile = new FileItem(selectedSetListFilePaths[titleIndex], model.Settings.MusicLibraryBaseDirectory);
             model.IsSetListMode = false;
         }
     }

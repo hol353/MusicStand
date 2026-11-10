@@ -1,5 +1,7 @@
 using System;
+using System.Globalization;
 using System.IO;
+using System.Xml;
 using Avalonia;
 using SkiaSharp;
 
@@ -58,6 +60,18 @@ public static class Extensions
             rect.Top,
             rect.Width,
             rect.Height);
-    }      
+    }     
+
+    /// <summary>
+    /// Set the value of a child XMLNode
+    /// </summary>
+    /// <param name="element"></param>
+    /// <param name="childName"></param>
+    /// <param name="o"></param>
+    public static void SetChildValue(this XmlNode element, string childName, object o)
+    {
+        var childElement = element.AppendChild(element.OwnerDocument.CreateElement(childName));
+        childElement.InnerText = o.ToString();
+    }
 }
  
