@@ -8,17 +8,17 @@ using ReactiveUI;
 
 namespace MusicStand;
 
-public class MusicLibrary : ReactiveObject
+public class Library : ReactiveObject
 {
     private MainViewModel model;
     private IEnumerable<FileItem> allFiles = Enumerable.Empty<FileItem>();
     private string fileNameFilter = string.Empty;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="MusicLibrary"/> class.
+    /// Initializes a new instance of the <see cref="Library"/> class.
     /// </summary>
     /// <param name="settings"></param>
-    public MusicLibrary(MainViewModel model)
+    public Library(MainViewModel model)
     {
         this.model = model;
         RefreshDirectoriesFiles();

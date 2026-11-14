@@ -128,8 +128,8 @@ public class TitlePersistence
         else
         {
             // If there are no links or pages with annotations then delete the file if it exists.
-            //if (File.Exists(filePath))
-            //    File.Delete(filePath);
+            if (File.Exists(filePath))
+                File.Delete(filePath);
         }
     }
 
@@ -181,22 +181,24 @@ public class TitlePersistence
     /// </summary>
     /// <param name="svgElement"></param>
     /// <returns></returns>
-    private static List<SkiaStroke> GetStrokesFromSVGElement(XElement svgElement)
+    public static List<SkiaStroke> GetStrokesFromSVGElement(XElement svgElement)
     {
         var strokes = new List<SkiaStroke>();
         foreach (var pathElement in svgElement.Descendants().Where(e => e.Name.LocalName == "path"))
         {
             var pathData = pathElement.Attribute("d")?.Value
                 ?? throw new FormatException("An SVG annotation path is missing its 'd' attribute.");
-            var colorValue = pathElement.Attribute("fill")?.Value
-                ?? throw new FormatException("An SVG annotation path is missing its 'fill' attribute.");
+            var colorValue = pathElement.Attribute("fill")?.Value 
+                ?? "black";
             var skPath = SKPath.ParseSvgPathData(pathData)
                 ?? throw new FormatException("An SVG annotation path contains invalid path data.");
 
             var colorField = typeof(SKColors).GetFields(BindingFlags.Static | BindingFlags.Public)
                 .FirstOrDefault(field => string.Equals(field.Name, colorValue, StringComparison.OrdinalIgnoreCase));
             var color = colorField == null
-                ? SKColor.Parse(colorValue)
+                ? string.Equals(colorValue, "currentColor", StringComparison.OrdinalIgnoreCase)
+                    ? SKColors.Black
+                    : SKColor.Parse(colorValue)
                 : (SKColor)colorField.GetValue(null);
 
             var opacity = GetOpacity(pathElement, "opacity") * GetOpacity(pathElement, "fill-opacity");

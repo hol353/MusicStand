@@ -101,7 +101,7 @@ public class MainViewModel : ReactiveObject
     /// <summary>
     /// The music library instance.
     /// </summary>
-    public MusicLibrary MusicLibrary { get; }
+    public Library MusicLibrary { get; }
 
     /// <summary>
     /// The setlists instance.

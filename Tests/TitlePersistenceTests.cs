@@ -7,6 +7,14 @@ namespace MusicStand.Tests;
 
 public class XMLPersistTests : IClassFixture<AvaloniaFixture>
 {
+    [Fact]
+    public void Stamp_LoadsAssetsUsingCurrentColor()
+    {
+        Assert.NotNull(new Stamp("sharp.svg").Path);
+        Assert.NotNull(new Stamp("flat.svg").Path);
+        Assert.NotNull(new Stamp("natural.svg").Path);
+    }
+
     /// <summary>
     /// Tests that the Write method does not create an XML file when the title has no links or strokes.
     /// </summary>

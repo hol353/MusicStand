@@ -1,6 +1,7 @@
 
 using System;
 using System.Linq;
+using System.Xml.Linq;
 using Avalonia;
 using Avalonia.Media;
 using Avalonia.Platform;
@@ -35,8 +36,10 @@ public class Stamp
         var assetUri = new Uri($"avares://MusicStand/Assets/{fileName}");
         using var stream = AssetLoader.Open(assetUri);
 
-        var annotations = Annotations.Create(stream);
-        Path = annotations.Paths.First().Path;
+        var svgElement = XElement.Load(stream);
+        var strokes = TitlePersistence.GetStrokesFromSVGElement(svgElement);
+        Path = strokes.First().Path;
+
         geometry = Geometry.Parse(Path.ToSvgPathData());
     }
 
