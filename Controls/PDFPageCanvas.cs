@@ -31,7 +31,7 @@ public class PDFPageCanvas : InkCanvas
     private MainViewModel model;
 
     /// <summary>The music page to show.</summary>
-    private MusicPage page;
+    private Page page;
 
     /// <summary>The main view.</summary>
     private PDFCanvas pdfAnnotator;
@@ -58,24 +58,21 @@ public class PDFPageCanvas : InkCanvas
     /// <param name="pdfAnnotator">The PDF canvas that hosts this page.</param>
     /// <param name="page">The music page, including its loaded annotations.</param>
     /// <param name="model">The application view model.</param>
-    public PDFPageCanvas(PDFCanvas pdfAnnotator, MusicPage page, MainViewModel model)
+    public PDFPageCanvas(PDFCanvas pdfAnnotator, Page page, MainViewModel model)
     {
         this.page = page;
         this.pdfAnnotator = pdfAnnotator;
         this.model = model;
         List<InkStylusPoint> points = new();
         StylusPointListSpan stylusPointListSpan = new(points, 0, points.Count);
-        if (page.Annotations != null)
+        if (page.Strokes != null)
         {
-            foreach (var annotation in page.Annotations.Paths)
-            {
-                var stroke = SkiaStroke.CreateStaticStroke(InkId.NewId(), annotation.Path, stylusPointListSpan, annotation.Color, 0.1f, true, inkStrokeRenderer: null);
+            foreach (var stroke in page.Strokes)
                 AvaloniaSkiaInkCanvas.AddStaticStroke(stroke);              
-            }        
         }
     }
 
-    internal MusicPage MusicPage => page;
+    internal Page MusicPage => page;
 
     /// <summary>
     /// Determines if the given y point is within the bounds of the bitmap render rectangle.
@@ -157,6 +154,11 @@ public class PDFPageCanvas : InkCanvas
     private void OnPointerMoved(object sender, PointerEventArgs e)
     {
         pointerPosition = e.GetPosition(this);
+        if (model.IsEraserMode &&
+            e.Pointer.Type == PointerType.Pen &&
+            e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            pdfAnnotator.EraseLinksAt(this, pointerPosition);
+
         if (isHairpinDrawing)
             hairpinCurrentPosition = pointerPosition;
         isPointerOverPage = true;
@@ -171,11 +173,11 @@ public class PDFPageCanvas : InkCanvas
 
     private void OnSizeChanged(object sender, SizeChangedEventArgs e)
     {
-        if (page.Annotations != null && AvaloniaSkiaInkCanvas.StaticStrokeList.Count > 0)
+        if (page.Strokes != null && AvaloniaSkiaInkCanvas.StaticStrokeList.Count > 0)
         {
             // The strokes are all relative to the page.Annotations.
-            double annotationWidth = page.Annotations.Width;
-            double annotationHeight = page.Annotations.Height;
+            double annotationWidth = page.ViewPortBounds.Width;
+            double annotationHeight = page.ViewPortBounds.Height;
 
             var annotationBitmapRenderRectangle = CalculateRenderRectangle(annotationWidth, annotationHeight);
             var newBitmapRenderRectangle = CalculateRenderRectangle(e.NewSize.Width, e.NewSize.Height);
@@ -194,6 +196,10 @@ public class PDFPageCanvas : InkCanvas
             e.Handled = true;
             return;
         }
+
+        if (model.IsEraserMode &&
+            e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            pdfAnnotator.EraseLinksAt(this, e.GetPosition(this));
 
         if (EditingMode == InkCanvasEditingMode.EraseByPoint &&
             e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
@@ -282,8 +288,8 @@ public class PDFPageCanvas : InkCanvas
             transformedStrokes.Add(transformedStroke);
         }
 
-        var newAnnotations = Annotations.Create(viewPortSize, bitmapBounds, transformedStrokes);
-        page.Annotations = newAnnotations;
+        page.Strokes = transformedStrokes;
+        page.ViewPortBounds = viewPortSize;
     }
 
     /// <summary>
@@ -323,38 +329,29 @@ public class PDFPageCanvas : InkCanvas
         return new Rect(new Point((availableWidth - width) / 2, 0), new Size(width, height));
     }
 
-    internal LinkMarker AddLinkMarker(Point position, Color color)
-    {
-        if (!bitmapRenderRectangle.Contains(position) ||
-            bitmapRenderRectangle.Width <= 0 ||
-            bitmapRenderRectangle.Height <= 0)
-            return null;
+    internal bool ContainsPoint(Point position) => bitmapRenderRectangle.Width > 0 &&
+                                                   bitmapRenderRectangle.Height > 0 &&
+                                                   bitmapRenderRectangle.Contains(position);
 
-        var relativePosition = new Point(
+    internal LinkMarker AddLinkMarker(Point relativePosition, Color color)
+    {
+        var marker = new LinkMarker(relativePosition, color);
+        linkMarkers.Add(marker);
+        InvalidateVisual();
+        return marker;
+    }
+
+    internal void RemoveLinkMarker(LinkMarker marker)
+    {
+        if (linkMarkers.Remove(marker))
+            InvalidateVisual();
+    }
+
+    internal Point GetRelativePosition(Point position)
+    {
+        return new Point(
             (position.X - bitmapRenderRectangle.Left) / bitmapRenderRectangle.Width,
             (position.Y - bitmapRenderRectangle.Top) / bitmapRenderRectangle.Height);
-        var marker = new LinkMarker(relativePosition, color);
-        linkMarkers.Add(marker);
-        InvalidateVisual();
-        return marker;
-    }
-
-    internal LinkMarker AddStoredLinkMarker(Point relativePosition, Color color)
-    {
-        var marker = new LinkMarker(relativePosition, color);
-        linkMarkers.Add(marker);
-        InvalidateVisual();
-        return marker;
-    }
-
-    internal MusicLinkEndpoint CreateLinkEndpoint(LinkMarker marker)
-    {
-        return new MusicLinkEndpoint(
-            page.Store.PdfPath,
-            page.PageNumber,
-            marker.RelativePosition.X,
-            marker.RelativePosition.Y,
-            marker.Color);
     }
 
     internal Point GetLinkMarkerPosition(LinkMarker marker)
@@ -362,12 +359,6 @@ public class PDFPageCanvas : InkCanvas
         return new Point(
             bitmapRenderRectangle.Left + marker.RelativePosition.X * bitmapRenderRectangle.Width,
             bitmapRenderRectangle.Top + marker.RelativePosition.Y * bitmapRenderRectangle.Height);
-    }
-
-    internal void RemoveLinkMarker(LinkMarker marker)
-    {
-        if (linkMarkers.Remove(marker))
-            InvalidateVisual();
     }
 
     internal bool IsLinkMarkerAt(LinkMarker marker, Point position)

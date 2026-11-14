@@ -14,11 +14,17 @@ public class Page
     /// Initializes a new instance of the <see cref="Page"/> class.
     /// </summary>
     /// <param name="pageNumber">Page number.</param>
-    public Page(int pageNumber, Bitmap bitmap)
+    public Page(Title title, int pageNumber, Bitmap bitmap)
     {
+        Title = title;
         PageNumber = pageNumber;
         Bitmap = bitmap;
     }
+
+    /// <summary>
+    /// The 'Title' instance owning this page.
+    /// </summary>
+    public Title Title { get; }
 
     /// <summary>
     /// Gets the page number.

@@ -32,7 +32,7 @@ public class MusicLibrary : ReactiveObject
     /// <summary>
     /// The list of open files in the music library.
     /// </summary>
-    public IEnumerable<MusicFile> OpenFiles { get; private set;}
+    public IEnumerable<Title> OpenFiles { get; private set;}
     
     /// <summary>
     /// The list of files in the music library (relative to SelectedDirectory, no extension).
@@ -91,19 +91,30 @@ public class MusicLibrary : ReactiveObject
     {
         if (File.Exists(fileName))
         {
-            List<MusicFile> openFiles = OpenFiles?.ToList() ?? new List<MusicFile>();
             if (Path.GetExtension(fileName).ToLower() == ".pdf")
-                openFiles.Add(new MusicFile(model, fileName));
+                OpenAll([fileName]);
             else 
             {
                 // Handle .txt file case
-                string[] fileNames = File.ReadAllLines(fileName);
-                foreach (var pdfFileName in fileNames)
-                    if (File.Exists(pdfFileName))
-                        openFiles.Add(new MusicFile(model, pdfFileName));
+                OpenAll(File.ReadAllLines(fileName)
+                            .Where(file => File.Exists(file)));
             }
-            OpenFiles = openFiles;
         }
+    }
+
+    /// <summary>
+    /// Open multiple files.
+    /// </summary>
+    public void OpenAll(IEnumerable<string> files)
+    {
+        List<Title> openFiles = new();
+        foreach (var file in files)
+        {
+            Title title = new(file);
+            TitlePersistence.Initialise(title, model.Settings);
+            openFiles.Add(title);
+        }
+        OpenFiles = openFiles;
     }
 
     /// <summary>
@@ -113,7 +124,7 @@ public class MusicLibrary : ReactiveObject
     {
         if (OpenFiles != null)
             foreach (var file in OpenFiles)
-                file.Save();
+                TitlePersistence.Write(file, model.Settings);
         OpenFiles = null;
     }
 

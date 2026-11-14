@@ -69,6 +69,8 @@ public class XMLPersistTests : IClassFixture<AvaloniaFixture>
             // Create a test title.
             var stroke = new SkiaStroke(InkId.NewId());
             stroke.AddPoint(new InkStylusPoint(1, 1));
+            var secondStroke = new SkiaStroke(InkId.NewId());
+            secondStroke.AddPoint(new InkStylusPoint(5, 5));
             Title title = new(pdfFilePath)
             { 
                 Links = [new Link()
@@ -81,7 +83,7 @@ public class XMLPersistTests : IClassFixture<AvaloniaFixture>
                 }],
             };
             TitlePersistence.Initialise(title, settings);
-            title.Pages.First().Strokes = [stroke];
+            title.Pages.First().Strokes = [stroke, secondStroke];
             title.Pages.First().ViewPortBounds = new(0, 0, 100, 100);
 
             // Persist the test title to file.
@@ -90,6 +92,20 @@ public class XMLPersistTests : IClassFixture<AvaloniaFixture>
             var files = Directory.EnumerateFiles(annotationsDirectory).ToList();
             Assert.Single(files);
             Assert.EndsWith(".xml", files[0]);
+
+            Assert.Contains("<svg", File.ReadAllText(files[0]));
+            var reloadedTitle = new Title(pdfFilePath);
+            TitlePersistence.Initialise(reloadedTitle, settings);
+            Assert.Equal(2, reloadedTitle.Pages.First().Strokes.Count);
+            Assert.Equal(
+                title.Pages.First().Strokes.Select(stroke => stroke.Color),
+                reloadedTitle.Pages.First().Strokes.Select(stroke => stroke.Color));
+            var reloadedLink = Assert.Single(reloadedTitle.Links);
+            Assert.Equal(title.Links[0].Point1PageNumber, reloadedLink.Point1PageNumber);
+            Assert.Equal(title.Links[0].Point1, reloadedLink.Point1);
+            Assert.Equal(title.Links[0].Point2PageNumber, reloadedLink.Point2PageNumber);
+            Assert.Equal(title.Links[0].Point2, reloadedLink.Point2);
+            Assert.Equal(title.Links[0].Color, reloadedLink.Color);
         }
         finally
         {
@@ -156,7 +172,12 @@ public class XMLPersistTests : IClassFixture<AvaloniaFixture>
             Title title = new(pdfFilePath);
             TitlePersistence.Initialise(title, settings);
 
-            Assert.Single(title.Links);
+            var link = Assert.Single(title.Links);
+            Assert.Equal(1, link.Point1PageNumber);
+            Assert.Equal(new Point(10, 20), link.Point1);
+            Assert.Equal(2, link.Point2PageNumber);
+            Assert.Equal(new Point(30, 40), link.Point2);
+            Assert.Equal(Colors.Red, link.Color);
             Assert.Single(title.Pages.First().Strokes);
             Assert.Empty(title.Pages.Last().Strokes);
         }

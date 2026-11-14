@@ -20,7 +20,10 @@ public class SettingsPersistence
             {
                 var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
                 var json = File.ReadAllText(path);
-                return JsonSerializer.Deserialize<Settings>(json, opts) ?? new Settings();
+                var settings = JsonSerializer.Deserialize<Settings>(json, opts) ?? new Settings();
+                if (settings.HomeDirectory == null)
+                    settings.HomeDirectory = homeDirectory;
+                return settings;
             }
             return new()
             {

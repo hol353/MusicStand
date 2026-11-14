@@ -70,7 +70,7 @@ public class Title
                 using (var framebuffer = bitmap.Lock())
                     document.Render(page, 1.7, MuPDFCore.PixelFormats.RGBA, framebuffer.Address, false);
 
-                pages.Add(new Page(pageNumber: page + 1, bitmap));
+                pages.Add(new Page(this, pageNumber: page + 1, bitmap));
             }
         }
     }  

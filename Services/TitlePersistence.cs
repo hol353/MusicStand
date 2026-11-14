@@ -4,7 +4,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Xml;
 using System.Xml.Linq;
 using DotNetCampus.Inking;
 using DotNetCampus.Inking.Primitive;
@@ -23,8 +22,9 @@ public class TitlePersistence
     public static void Initialise(Title title, Settings settings)
     {
         var pdfRelativeFilePath = title.PDFPath.ToRelative(settings.MusicLibraryBaseDirectory);
-        var xmlFilePath = Path.Combine(settings.HomeDirectory, 
-                                       "Annotations", 
+        var xmlFilePath = Path.Combine(settings.HomeDirectory,
+                                       "Annotations",
+                                       settings.SelectedDirectory ?? string.Empty,
                                        $"{Path.GetFileNameWithoutExtension(pdfRelativeFilePath)}.xml");
         if (File.Exists(xmlFilePath))
         {
@@ -35,9 +35,12 @@ public class TitlePersistence
             foreach (var pageElement in titleElement?.Elements().Where(n => n.Name == "page"))
             {
                 var pageNumber = int.Parse(pageElement.Element("number").Value);
-                var svgElement = pageElement.Elements().First(n => n.Name.LocalName == "svg");
-                int width = svgElement != null ? int.Parse(svgElement.Attribute("width")?.Value) : 0;
-                int height = svgElement != null ? int.Parse(svgElement.Attribute("height")?.Value) : 0;
+                var svgElement = pageElement.Elements().FirstOrDefault(n => n.Name.LocalName == "svg");
+                if (svgElement == null)
+                    continue;
+
+                int width = int.Parse(svgElement.Attribute("width")?.Value);
+                int height = int.Parse(svgElement.Attribute("height")?.Value);
                 Page page = title.Pages.FirstOrDefault(p => p.PageNumber == pageNumber);
                 if (page != null)
                 {
@@ -63,8 +66,17 @@ public class TitlePersistence
                         double.Parse(point2Element.Element("x")?.Value),
                         double.Parse(point2Element.Element("y")?.Value));
                     var color = Avalonia.Media.Color.Parse(colorElement.Value);
+                    var point1PageNumber = int.Parse(point1Element.Element("page")?.Value);
+                    var point2PageNumber = int.Parse(point2Element.Element("page")?.Value);
 
-                    title.Links.Add(new Link { Point1 = point1, Point2 = point2, Color = color });
+                    title.Links.Add(new Link
+                    {
+                        Point1PageNumber = point1PageNumber,
+                        Point1 = point1,
+                        Point2PageNumber = point2PageNumber,
+                        Point2 = point2,
+                        Color = color
+                    });
                 }
             }
         }
@@ -85,7 +97,9 @@ public class TitlePersistence
             pageElement.Add(new XElement("number", page.PageNumber));
 
             // Convert strokes to SVG XML and append to page
-            pageElement.Add(StrokesToXML(page.Strokes, page.ViewPortBounds));
+            var svgElement = StrokesToXML(page.Strokes, page.ViewPortBounds);
+            if (svgElement != null)
+                pageElement.Add(svgElement);
         }
 
         // Write links
@@ -101,13 +115,21 @@ public class TitlePersistence
         }
 
         // If there are any links or pages with annotations then write the file.
-        if (titleElement.Descendants().Any())
+        var pdfRelativeFilePath = title.PDFPath.ToRelative(settings.MusicLibraryBaseDirectory);
+        var filePath = Path.Combine(settings.HomeDirectory,
+                                    "Annotations",
+                                    settings.SelectedDirectory ?? string.Empty,
+                                    $"{Path.GetFileNameWithoutExtension(pdfRelativeFilePath)}.xml");
+        if (titleElement.Descendants().Any(e => e.Name == "link" || (e.Name == "page" && e.Elements().Any(p => p.Name.LocalName == "svg"))))
         {
-            var pdfRelativeFilePath = title.PDFPath.ToRelative(settings.MusicLibraryBaseDirectory);
-            var filePath = Path.Combine(settings.HomeDirectory, 
-                                        "Annotations", 
-                                        $"{Path.GetFileNameWithoutExtension(pdfRelativeFilePath)}.xml");
+            Directory.CreateDirectory(Path.GetDirectoryName(filePath));
             doc.Save(filePath);    
+        }
+        else
+        {
+            // If there are no links or pages with annotations then delete the file if it exists.
+            //if (File.Exists(filePath))
+            //    File.Delete(filePath);
         }
     }
 
@@ -132,8 +154,11 @@ public class TitlePersistence
     /// <summary>
     /// Convert strokes to XMLDocument.
     /// </summary>
-    private static XmlDocument StrokesToXML(IReadOnlyList<SkiaStroke> strokes, SKRect viewPortBounds)
+    private static XElement StrokesToXML(IReadOnlyList<SkiaStroke> strokes, SKRect viewPortBounds)
     {
+        if (strokes.Count == 0)
+            return null;
+
         var ms = new MemoryStream();
         using (var skCanvas = SKSvgCanvas.Create(viewPortBounds, ms))
         {
@@ -148,9 +173,7 @@ public class TitlePersistence
             }
         }
         ms.Position = 0;
-        XmlDocument svg = new();
-        svg.Load(ms);
-        return svg;
+        return XElement.Load(ms);
     }
 
     /// <summary>
@@ -161,36 +184,29 @@ public class TitlePersistence
     private static List<SkiaStroke> GetStrokesFromSVGElement(XElement svgElement)
     {
         var strokes = new List<SkiaStroke>();
-        var pathElement = svgElement.Elements().First(e => e.Name.LocalName == "path");
-        if (pathElement != null)
+        foreach (var pathElement in svgElement.Descendants().Where(e => e.Name.LocalName == "path"))
         {
-            // Convert SVG XML back to strokes
-            using (var ms = new MemoryStream())
-            {
-                pathElement.Document.Save(ms);
-                ms.Position = 0;
-                using (var skCanvas = SKSvgCanvas.Create(SKRect.Empty, ms))
-                {
-                    // Get the stroke path.
-                    var pathData = pathElement.Attributes("d").First().Value;
-                    var skPath = SKPath.ParseSvgPathData(pathData);       
+            var pathData = pathElement.Attribute("d")?.Value
+                ?? throw new FormatException("An SVG annotation path is missing its 'd' attribute.");
+            var colorValue = pathElement.Attribute("fill")?.Value
+                ?? throw new FormatException("An SVG annotation path is missing its 'fill' attribute.");
+            var skPath = SKPath.ParseSvgPathData(pathData)
+                ?? throw new FormatException("An SVG annotation path contains invalid path data.");
 
-                    // get the stroke colour.
-                    string colorName = pathElement.Attributes("fill").First().Value;
-                    var fieldInfo = typeof(SKColors).GetFields(BindingFlags.Static | BindingFlags.Public)
-                                                    .First(fieldInfo => fieldInfo.Name.ToLower() == colorName);
-                    var color = (SKColor)fieldInfo.GetValue(null);
+            var colorField = typeof(SKColors).GetFields(BindingFlags.Static | BindingFlags.Public)
+                .FirstOrDefault(field => string.Equals(field.Name, colorValue, StringComparison.OrdinalIgnoreCase));
+            var color = colorField == null
+                ? SKColor.Parse(colorValue)
+                : (SKColor)colorField.GetValue(null);
 
-                    // Apply the opacity to the stroke colour.
-                    var opacity = GetOpacity(pathElement, "opacity") * GetOpacity(pathElement, "fill-opacity");
-                    color = color.WithAlpha((byte)Math.Round(color.Alpha * opacity));
+            var opacity = GetOpacity(pathElement, "opacity") * GetOpacity(pathElement, "fill-opacity");
+            color = color.WithAlpha((byte)Math.Round(color.Alpha * opacity));
 
-                    List<InkStylusPoint> points = new();
-                    StylusPointListSpan stylusPointListSpan = new(points, 0, points.Count);
-                    var stroke = SkiaStroke.CreateStaticStroke(InkId.NewId(), skPath, stylusPointListSpan, color, 0.1f, true, inkStrokeRenderer: null);                                  
-                    strokes.Add(stroke);
-                }
-            }
+            List<InkStylusPoint> points = new();
+            StylusPointListSpan stylusPointListSpan = new(points, 0, points.Count);
+            var stroke = SkiaStroke.CreateStaticStroke(
+                InkId.NewId(), skPath, stylusPointListSpan, color, 0.1f, true, inkStrokeRenderer: null);
+            strokes.Add(stroke);
         }
         return strokes;
     }
