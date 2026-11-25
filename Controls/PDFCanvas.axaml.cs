@@ -7,9 +7,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.PanAndZoom;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.LogicalTree;
 using Avalonia.Media;
-using Avalonia.VisualTree;
 using DotNetCampus.Inking;
 using DotNetCampus.Inking.Erasing;
 using ReactiveUI;
@@ -22,10 +20,8 @@ namespace MusicStand;
 /// </summary>
 public partial class PDFCanvas : UserControl
 {
-    private sealed record LinkEndpoint(PDFPageCanvas Page, LinkMarker Marker);
-    private sealed record PdfLink(Link Link, LinkEndpoint First, LinkEndpoint Second);
-
     private MainViewModel model;
+    CanvasRenderer canvasRenderer;
     private ZoomBorder zoomBorder;
     private StackPanel musicCanvas;
     int currentPageIndex = -1;
@@ -35,12 +31,6 @@ public partial class PDFCanvas : UserControl
 
     /// <summary>The time the user spent panning. Used to determine if a tap is a pan or a single tap.</summary>
     private TimeSpan panTime;
-
-    private PDFPageCanvas firstLinkMarkerPage;
-    private Point firstLinkMarkerPoint;
-    private LinkMarker firstLinkMarker;
-
-    private readonly List<PdfLink> links = new();
 
     /// <summary>
     /// Constructor
@@ -65,9 +55,6 @@ public partial class PDFCanvas : UserControl
         model.WhenAnyValue(x => x.IsTextStampMode).Subscribe(_ => UpdateAnnotateMode());
         model.WhenAnyValue(x => x.IsLinkMode).Subscribe(isLinkMode =>
         {
-            if (!isLinkMode)
-                CancelPendingLink();
-
             UpdateAnnotateMode();
             if (!model.IsAnnotationMode && musicCanvas.Children.Count > 0)
                 ConfigureNavigationPanning();
@@ -109,12 +96,10 @@ public partial class PDFCanvas : UserControl
     private void Load(IEnumerable<string> pdfFilePaths)
     {
         model.MusicLibrary.CloseAll();
-        CancelPendingLink();
-        links.Clear();
+        canvasRenderer?.LinkRenderer.CancelPendingLink();
         musicCanvas.Children.Clear();
         foreach (var pdfFilePath in pdfFilePaths)
             Load(pdfFilePath);
-        LoadStoredLinks();
     }
 
     /// <summary>
@@ -231,18 +216,25 @@ public partial class PDFCanvas : UserControl
         {
             model.MusicLibrary.Open(pdfFilePath);
             
+            canvasRenderer = new(zoomBorder, model);
+            List<PageRenderer> pageRenderers = new();
             foreach (var file in model.MusicLibrary.OpenFiles)
             {
                 foreach (var page in file.Pages)
                 {
-                    var sheetMusicControl = new PDFPageCanvas(this, page, model);
+                    var sheetMusicControl = new PDFPageCanvas(page, model);
                     sheetMusicControl.AvaloniaSkiaInkCanvas.Settings.EraserViewCreator = new DelegateEraserViewCreator(() => new CustomEraserView());
                     sheetMusicControl.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch;
                     sheetMusicControl.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top;
                     sheetMusicControl.AvaloniaSkiaInkCanvas.Settings.IgnorePressure = true;
                     musicCanvas.Children.Add(sheetMusicControl);
+                    PageRenderer pageRenderer = new (page, sheetMusicControl);
+                    sheetMusicControl.SetRenderers(canvasRenderer, pageRenderer);
+                    pageRenderers.Add(pageRenderer);
                 }
             }
+            canvasRenderer.SetPageRenderers(pageRenderers);
+
             // Pan back to the origin instead.
             zoomBorder.PanDelta(0, -zoomBorder.OffsetY);
             UpdateAnnotateMode();
@@ -284,7 +276,7 @@ public partial class PDFCanvas : UserControl
             double newOffsetY = 0;
             for (int i = 0; i < currentPageIndex; i++)
             {
-                Rect r = (musicCanvas.Children[i] as PDFPageCanvas).CalculateRenderRectangle(newSize.Width, newSize.Height);
+                Rect r = canvasRenderer.PageRenderers[i].MeasurePage(newSize.Width, newSize.Height);
                 newOffsetY += r.Height + musicCanvas.Spacing;
             }
 
@@ -342,11 +334,11 @@ public partial class PDFCanvas : UserControl
     /// </summary>
     private void OnSingleTap(object sender, TappedEventArgs e)
     {
-        if (model.IsAnnotationMode && e.Pointer.Type != PointerType.Pen)
-        {
-            e.Handled = true;
-            return;
-        }
+        //if (model.IsAnnotationMode && e.Pointer.Type != PointerType.Pen)
+        //{
+        //    e.Handled = true;
+        //    return;
+        //}
 
         // If stamp mode is on then add a stamp to the page at the cursor position.
         if (model.IsStampMode)
@@ -373,66 +365,20 @@ public partial class PDFCanvas : UserControl
             return;
         }
 
+        var pageRenderer = canvasRenderer.PageRenderers
+                                         .FirstOrDefault(p => p.ContainsPoint(e));
+
         if (model.IsLinkMode)
         {
-            // Find page that was clicked on.
-            var page = musicCanvas.Children.OfType<PDFPageCanvas>()
-                                  .FirstOrDefault(p => p.ContainsPoint(e.GetPosition(p)));
-
-            if (page != null)
-            {
-                // Determine the relative position on the page.
-                var relativePosition = page.GetRelativePosition(e.GetPosition(page));
-
-                // Determine if this is the first point.
-                if (firstLinkMarkerPage == null)
-                {
-                    // First marker.
-                    firstLinkMarkerPage = page;
-                    firstLinkMarkerPoint = relativePosition;
-                    firstLinkMarker = page.AddLinkMarker(relativePosition, model.SelectedBrush.Color);
-                }
-                else
-                {
-                    // Second marker
-                    var secondLinkMarkerPage = page;
-                    var secondLinkMarkerPoint = relativePosition;
-
-                    // Make sure the 2 markers have the same title. The user may have a setlist open
-                    // and have tried to create a link between pages in 2 different titles. Don't allow this.
-                    if (firstLinkMarkerPage.MusicPage.Title == secondLinkMarkerPage.MusicPage.Title)
-                    {
-                        var link = new Link
-                        {
-                            Color = firstLinkMarker.Color,
-                            Point1PageNumber = firstLinkMarkerPage.MusicPage.PageNumber,
-                            Point1 = firstLinkMarkerPoint,
-                            Point2PageNumber = secondLinkMarkerPage.MusicPage.PageNumber,
-                            Point2 = secondLinkMarkerPoint,
-                        };
-                        firstLinkMarkerPage.MusicPage.Title.Links.Add(link);
-
-                        var firstMarker = firstLinkMarker;
-                        var secondMarker = secondLinkMarkerPage.AddLinkMarker(link.Point2, link.Color);
-                        links.Add(new PdfLink(
-                            link,
-                            new LinkEndpoint(firstLinkMarkerPage, firstMarker),
-                            new LinkEndpoint(secondLinkMarkerPage, secondMarker)));
-
-                        firstLinkMarkerPage = null;
-                        firstLinkMarker = null;
-                        model.IsLinkMode = false;
-                    }
-                }
-            }
-
+            canvasRenderer.LinkRenderer.TryAddLink(pageRenderer, e.GetPosition(pageRenderer.Control));
             e.Handled = true;
             return;
         }
 
-        if (TryNavigateToLinkedMarker(e))
+        if (pageRenderer != null && canvasRenderer.LinkRenderer.TryNavigateToLinkedMarker(pageRenderer, e.GetPosition(pageRenderer.Control)))
         {
             e.Handled = true;
+            CalculatePageIndexOfCurrentPage(); // move this to canvasrenderer.
             return;
         }
 
@@ -473,103 +419,6 @@ public partial class PDFCanvas : UserControl
             }
         }
         e.Handled = true;
-    }
-
-    private bool TryNavigateToLinkedMarker(TappedEventArgs e)
-    {
-        foreach (var link in links.AsEnumerable().Reverse())
-        {
-            if (link.First.Page.IsLinkMarkerAt(link.First.Marker, e.GetPosition(link.First.Page)))
-            {
-                NavigateToEndpoint(link.Second);
-                return true;
-            }
-
-            if (link.Second.Page.IsLinkMarkerAt(link.Second.Marker, e.GetPosition(link.Second.Page)))
-            {
-                NavigateToEndpoint(link.First);
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private void NavigateToEndpoint(LinkEndpoint endpoint)
-    {
-        var point = endpoint.Page.TranslatePoint(endpoint.Page.GetLinkMarkerPosition(endpoint.Marker), zoomBorder);
-        if (point is not Point targetPoint)
-            return;
-
-        var deltaX = zoomBorder.Bounds.Width / 2 - targetPoint.X;
-        var deltaY = zoomBorder.Bounds.Height / 2 - targetPoint.Y;
-        zoomBorder.PanDelta(deltaX, deltaY);
-        CalculatePageIndexOfCurrentPage();
-    }
-
-    private void LoadStoredLinks()
-    {
-        var pages = musicCanvas.Children.OfType<PDFPageCanvas>()
-            .ToDictionary(page => (page.MusicPage.Title, page.MusicPage.PageNumber));
-
-        foreach (var title in musicCanvas.Children.OfType<PDFPageCanvas>()
-                     .Select(page => page.MusicPage.Title)
-                     .Distinct())
-        {
-            foreach (var link in title.Links)
-            {
-                if (!pages.TryGetValue((title, link.Point1PageNumber), out var firstPage) ||
-                    !pages.TryGetValue((title, link.Point2PageNumber), out var secondPage))
-                    continue;
-
-                var firstMarker = firstPage.AddLinkMarker(link.Point1, link.Color);
-                var secondMarker = secondPage.AddLinkMarker(link.Point2, link.Color);
-                links.Add(new PdfLink(
-                    link,
-                    new LinkEndpoint(firstPage, firstMarker),
-                    new LinkEndpoint(secondPage, secondMarker)));
-            }
-        }
-    }
-
-    internal void EraseLinksAt(PDFPageCanvas page, Point position)
-    {
-        if (firstLinkMarkerPage != null && firstLinkMarker != null)
-        {
-            var pendingPosition = page.TranslatePoint(position, firstLinkMarkerPage);
-            if (pendingPosition is Point point &&
-                firstLinkMarkerPage.IsLinkMarkerAt(firstLinkMarker, point))
-                CancelPendingLink();
-        }
-
-        foreach (var link in links.Where(link =>
-                     IsLinkMarkerAt(link.First, page, position) ||
-                     IsLinkMarkerAt(link.Second, page, position))
-                 .ToList())
-        {
-            link.First.Page.RemoveLinkMarker(link.First.Marker);
-            link.Second.Page.RemoveLinkMarker(link.Second.Marker);
-            link.First.Page.MusicPage.Title.Links.Remove(link.Link);
-            links.Remove(link);
-        }
-    }
-
-    private static bool IsLinkMarkerAt(LinkEndpoint endpoint, PDFPageCanvas sourcePage, Point position)
-    {
-        var endpointPosition = sourcePage.TranslatePoint(position, endpoint.Page);
-        return endpointPosition is Point point && endpoint.Page.IsLinkMarkerAt(endpoint.Marker, point);
-    }
-
-    /// <summary>
-    /// User has turned link model off.
-    /// </summary>
-    private void CancelPendingLink()
-    {
-        if (firstLinkMarkerPage != null && firstLinkMarker != null)
-            firstLinkMarkerPage.RemoveLinkMarker(firstLinkMarker);
-
-        firstLinkMarkerPage = null;
-        firstLinkMarker = null;
     }
 
     private void ConfigureNavigationPanning()

@@ -5,7 +5,8 @@ using DotNetCampus.Inking.Primitive;
 
 namespace MusicStand.Tests;
 
-public class XMLPersistTests : IClassFixture<AvaloniaFixture>
+[Collection("Avalonia")]
+public class XMLPersistTests
 {
     [Fact]
     public void Stamp_LoadsAssetsUsingCurrentColor()
@@ -83,14 +84,22 @@ public class XMLPersistTests : IClassFixture<AvaloniaFixture>
             { 
                 Links = [new Link()
                 {
-                    Color = Colors.Red,
-                    Point1PageNumber = 1,
-                    Point1 = new Point(10, 20),
-                    Point2PageNumber = 2,
-                    Point2 = new Point(30, 40)
+                    Marker1 = new LinkMarker1()
+                    {
+                        PageNumber = 1,
+                        X = 10,
+                        Y = 20,
+                        Color = Colors.Red
+                    },
+                    Marker2 = new LinkMarker1()
+                    {
+                        PageNumber = 2,
+                        X = 30,
+                        Y = 40,
+                        Color = Colors.Red
+                    },
                 }],
             };
-            TitlePersistence.Initialise(title, settings);
             title.Pages.First().Strokes = [stroke, secondStroke];
             title.Pages.First().ViewPortBounds = new(0, 0, 100, 100);
 
@@ -109,11 +118,13 @@ public class XMLPersistTests : IClassFixture<AvaloniaFixture>
                 title.Pages.First().Strokes.Select(stroke => stroke.Color),
                 reloadedTitle.Pages.First().Strokes.Select(stroke => stroke.Color));
             var reloadedLink = Assert.Single(reloadedTitle.Links);
-            Assert.Equal(title.Links[0].Point1PageNumber, reloadedLink.Point1PageNumber);
-            Assert.Equal(title.Links[0].Point1, reloadedLink.Point1);
-            Assert.Equal(title.Links[0].Point2PageNumber, reloadedLink.Point2PageNumber);
-            Assert.Equal(title.Links[0].Point2, reloadedLink.Point2);
-            Assert.Equal(title.Links[0].Color, reloadedLink.Color);
+            Assert.Equal(title.Links[0].Marker1.PageNumber, reloadedLink.Marker1.PageNumber);
+            Assert.Equal(title.Links[0].Marker1.X, reloadedLink.Marker1.X);
+            Assert.Equal(title.Links[0].Marker1.Y, reloadedLink.Marker1.Y);
+            Assert.Equal(title.Links[0].Marker2.PageNumber, reloadedLink.Marker2.PageNumber);
+            Assert.Equal(title.Links[0].Marker2.X, reloadedLink.Marker2.X);
+            Assert.Equal(title.Links[0].Marker2.Y, reloadedLink.Marker2.Y);
+            Assert.Equal(title.Links[0].Marker1.Color, reloadedLink.Marker1.Color);
         }
         finally
         {
@@ -155,17 +166,18 @@ public class XMLPersistTests : IClassFixture<AvaloniaFixture>
                 "    </svg>" +
                 "  </page>" +
                 "  <link>" +
-                "    <color>Red</color>" +
-                "    <point>" +
+                "    <marker>" +
+                "      <color>Red</color>" +
                 "      <page>1</page>" +
                 "      <x>10</x>" +
                 "      <y>20</y>" +
-                "    </point>" +
-                "    <point>" +
+                "    </marker>" +
+                "    <marker>" +
+                "      <color>Red</color>" +
                 "      <page>2</page>" +
                 "      <x>30</x>" +
                 "      <y>40</y>" +
-                "    </point>" +
+                "    </marker>" +
                 "  </link>" +
                 "</title>");
             
@@ -181,11 +193,13 @@ public class XMLPersistTests : IClassFixture<AvaloniaFixture>
             TitlePersistence.Initialise(title, settings);
 
             var link = Assert.Single(title.Links);
-            Assert.Equal(1, link.Point1PageNumber);
-            Assert.Equal(new Point(10, 20), link.Point1);
-            Assert.Equal(2, link.Point2PageNumber);
-            Assert.Equal(new Point(30, 40), link.Point2);
-            Assert.Equal(Colors.Red, link.Color);
+            Assert.Equal(1, link.Marker1.PageNumber);
+            Assert.Equal(10, link.Marker1.X);
+            Assert.Equal(20, link.Marker1.Y);
+            Assert.Equal(2, link.Marker2.PageNumber);
+            Assert.Equal(30, link.Marker2.X);
+            Assert.Equal(40, link.Marker2.Y);
+            Assert.Equal(Colors.Red, link.Marker1.Color);
             Assert.Single(title.Pages.First().Strokes);
             Assert.Empty(title.Pages.Last().Strokes);
         }
@@ -207,4 +221,9 @@ public class AvaloniaFixture
             .UsePlatformDetect()
             .SetupWithoutStarting();
     }
+}
+
+[CollectionDefinition("Avalonia")]
+public class AvaloniaCollection : ICollectionFixture<AvaloniaFixture>
+{
 }

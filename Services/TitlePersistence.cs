@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Xml.Linq;
+using Avalonia.Media;
 using DotNetCampus.Inking;
 using DotNetCampus.Inking.Primitive;
 using SkiaSharp;
@@ -53,29 +54,30 @@ public class TitlePersistence
             title.Links.Clear();
             foreach (var linkElement in titleElement?.Elements().Where(n => n.Name == "link"))
             {
-                var point1Element = linkElement.Elements("point").First();
-                var point2Element = linkElement.Elements("point").Last();
-                var colorElement = linkElement.Element("color");
+                var marker1Element = linkElement.Elements("marker").First();
+                var marker2Element = linkElement.Elements("marker").Last();
 
-                if (point1Element != null && point2Element != null && colorElement != null)
+                if (marker1Element != null && marker2Element != null)
                 {
-                    var point1 = new Avalonia.Point(
-                        double.Parse(point1Element.Element("x")?.Value),
-                        double.Parse(point1Element.Element("y")?.Value));
-                    var point2 = new Avalonia.Point(
-                        double.Parse(point2Element.Element("x")?.Value),
-                        double.Parse(point2Element.Element("y")?.Value));
-                    var color = Avalonia.Media.Color.Parse(colorElement.Value);
-                    var point1PageNumber = int.Parse(point1Element.Element("page")?.Value);
-                    var point2PageNumber = int.Parse(point2Element.Element("page")?.Value);
+                    var point1PageNumber = int.Parse(marker1Element.Element("page")?.Value);
+                    var point2PageNumber = int.Parse(marker2Element.Element("page")?.Value);
 
                     title.Links.Add(new Link
                     {
-                        Point1PageNumber = point1PageNumber,
-                        Point1 = point1,
-                        Point2PageNumber = point2PageNumber,
-                        Point2 = point2,
-                        Color = color
+                        Marker1 = new()
+                        {
+                            PageNumber = point1PageNumber,
+                            X = double.Parse(marker1Element.Element("x")?.Value),
+                            Y = double.Parse(marker1Element.Element("y")?.Value),
+                            Color = Color.Parse(marker1Element.Element("color").Value)
+                        },
+                        Marker2 = new()
+                        {
+                            PageNumber = point2PageNumber,
+                            X = double.Parse(marker2Element.Element("x")?.Value),
+                            Y = double.Parse(marker2Element.Element("y")?.Value),
+                            Color = Color.Parse(marker2Element.Element("color").Value)
+                        }
                     });
                 }
             }
@@ -93,23 +95,24 @@ public class TitlePersistence
         {
             // Create a page element
             var pageElement = new XElement("page");
-            titleElement.Add(pageElement);
             pageElement.Add(new XElement("number", page.PageNumber));
 
             // Convert strokes to SVG XML and append to page
             var svgElement = StrokesToXML(page.Strokes, page.ViewPortBounds);
             if (svgElement != null)
+            {
                 pageElement.Add(svgElement);
+                titleElement.Add(pageElement);
+            }
         }
 
         // Write links
         foreach (var link in title.Links)
         {
+            var marker1 = link.Marker1;
             var linkElement = new XElement("link");
-            linkElement.Add(new XElement("color", link.Color));
-
-            linkElement.Add(CreatePointElement(doc, link.Point1PageNumber, link.Point1.X, link.Point1.Y));
-            linkElement.Add(CreatePointElement(doc, link.Point2PageNumber, link.Point2.X, link.Point2.Y));
+            linkElement.Add(CreatePointElement(link.Marker1.PageNumber, link.Marker1.X, link.Marker1.Y, link.Marker1.Color));
+            linkElement.Add(CreatePointElement(link.Marker2.PageNumber, link.Marker2.X, link.Marker2.Y, link.Marker2.Color));
 
             titleElement.Add(linkElement);
         }
@@ -137,18 +140,19 @@ public class TitlePersistence
     /// <summary>
     /// Creates a point element for a link in the XML document.
     /// </summary>
-    /// <param name="doc"></param>
     /// <param name="pageNumber"></param>
     /// <param name="x"></param>
     /// <param name="y"></param>
+    /// <param name="color"></param>
     /// <returns></returns>
-    private static XElement CreatePointElement(XDocument doc, int pageNumber, double x, double y)
+    private static XElement CreatePointElement(int pageNumber, double x, double y, Color color)
     {
-        var pointElement = new XElement("point");
-        pointElement.Add(new XElement("page", pageNumber));
-        pointElement.Add(new XElement("x", x));
-        pointElement.Add(new XElement("y", y));
-        return pointElement;
+        var markerElement = new XElement("marker");
+        markerElement.Add(new XElement("page", pageNumber));
+        markerElement.Add(new XElement("x", x));
+        markerElement.Add(new XElement("y", y));
+        markerElement.Add(new XElement("color", color));
+        return markerElement;
     }
 
     /// <summary>

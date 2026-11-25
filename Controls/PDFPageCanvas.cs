@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.PanAndZoom;
@@ -16,31 +17,21 @@ using SkiaSharp;
 
 namespace MusicStand;
 
-internal sealed class LinkMarker(Point relativePosition, Color color)
-{
-    public Point RelativePosition { get; } = relativePosition;
-    public Color Color { get; } = color;
-}
-
 /// <summary>
 /// Encapsulates a user control that shows a page of music and allows annotations.
 /// </summary>
 public class PDFPageCanvas : InkCanvas
 {
-
     private MainViewModel model;
+
+    private PageRenderer pageRenderer;
+    private CanvasRenderer canvasRenderer;
 
     /// <summary>The music page to show.</summary>
     private Page page;
 
-    /// <summary>The main view.</summary>
-    private PDFCanvas pdfAnnotator;
-
     /// <summary>The rectangle the bitmap is drawn into.</summary>
     private Rect bitmapRenderRectangle;
-
-    /// <summary>The time when the user started panning. Used to determine if a tap is a pan or a single tap.</summary>
-    private DateTime panStartTime = DateTime.MinValue;
 
     /// <summary>The size of the viewport in pixels.</summary>
     private SKRect viewPortSize;
@@ -50,7 +41,6 @@ public class PDFPageCanvas : InkCanvas
     private bool isHairpinDrawing;
     private Point hairpinStartPosition;
     private Point hairpinCurrentPosition;
-    private readonly List<LinkMarker> linkMarkers = new();
 
     /// <summary>
     /// Constructor.
@@ -58,13 +48,10 @@ public class PDFPageCanvas : InkCanvas
     /// <param name="pdfAnnotator">The PDF canvas that hosts this page.</param>
     /// <param name="page">The music page, including its loaded annotations.</param>
     /// <param name="model">The application view model.</param>
-    public PDFPageCanvas(PDFCanvas pdfAnnotator, Page page, MainViewModel model)
+    public PDFPageCanvas(Page page, MainViewModel model)
     {
         this.page = page;
-        this.pdfAnnotator = pdfAnnotator;
         this.model = model;
-        List<InkStylusPoint> points = new();
-        StylusPointListSpan stylusPointListSpan = new(points, 0, points.Count);
         if (page.Strokes != null)
         {
             foreach (var stroke in page.Strokes)
@@ -155,9 +142,9 @@ public class PDFPageCanvas : InkCanvas
     {
         pointerPosition = e.GetPosition(this);
         if (model.IsEraserMode &&
-            e.Pointer.Type == PointerType.Pen &&
+            //e.Pointer.Type == PointerType.Pen &&
             e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
-            pdfAnnotator.EraseLinksAt(this, pointerPosition);
+            canvasRenderer.LinkRenderer.EraseLinksAt(pageRenderer, pointerPosition);
 
         if (isHairpinDrawing)
             hairpinCurrentPosition = pointerPosition;
@@ -179,8 +166,8 @@ public class PDFPageCanvas : InkCanvas
             double annotationWidth = page.ViewPortBounds.Width;
             double annotationHeight = page.ViewPortBounds.Height;
 
-            var annotationBitmapRenderRectangle = CalculateRenderRectangle(annotationWidth, annotationHeight);
-            var newBitmapRenderRectangle = CalculateRenderRectangle(e.NewSize.Width, e.NewSize.Height);
+            var annotationBitmapRenderRectangle = pageRenderer.MeasurePage(annotationWidth, annotationHeight);
+            var newBitmapRenderRectangle = pageRenderer.MeasurePage(e.NewSize.Width, e.NewSize.Height);
 
             // Transform the existing strokes to fit the new size of the control.
             var translation = CreateStretchMatrix(annotationBitmapRenderRectangle.ToSKRect(), newBitmapRenderRectangle.ToSKRect());
@@ -199,7 +186,7 @@ public class PDFPageCanvas : InkCanvas
 
         if (model.IsEraserMode &&
             e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
-            pdfAnnotator.EraseLinksAt(this, e.GetPosition(this));
+            canvasRenderer.LinkRenderer.EraseLinksAt(pageRenderer, e.GetPosition(this));
 
         if (EditingMode == InkCanvasEditingMode.EraseByPoint &&
             e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
@@ -299,75 +286,15 @@ public class PDFPageCanvas : InkCanvas
     /// <returns>The size the control wants.</returns>
     protected override Size MeasureCore(Size availableSize)
     {
-        bitmapRenderRectangle = CalculateRenderRectangle(availableSize.Width, availableSize.Height);
+        double height = availableSize.Height;
+        if (double.IsInfinity(availableSize.Height))
+            height = zoomBorder.Bounds.Height;
+        bitmapRenderRectangle = pageRenderer.MeasurePage(availableSize.Width, height);
+        pageRenderer.SetRenderRectangle(bitmapRenderRectangle);
         var size = new Size(availableSize.Width, bitmapRenderRectangle.Height);
 
         base.MeasureCore(size);
         return size;
-    }
-
-    public Rect CalculateRenderRectangle(double availableWidth, double availableHeight)
-    {
-        var width = availableWidth;
-        var height = availableHeight;
-        if (double.IsInfinity(height))
-        {
-            height = zoomBorder.Bounds.Height;
-        }
-        if (page.Bitmap != null)
-        {
-            double imageAspectRatio = page.Bitmap.Size.Height / page.Bitmap.Size.Width;
-            width = height / imageAspectRatio;
-            if (width > availableWidth)
-            {
-                width = availableWidth;
-                height = width * imageAspectRatio;
-            }
-        }
-
-        // Create a centered rectangle that represents the area where the music will be rendered.
-        return new Rect(new Point((availableWidth - width) / 2, 0), new Size(width, height));
-    }
-
-    internal bool ContainsPoint(Point position) => bitmapRenderRectangle.Width > 0 &&
-                                                   bitmapRenderRectangle.Height > 0 &&
-                                                   bitmapRenderRectangle.Contains(position);
-
-    internal LinkMarker AddLinkMarker(Point relativePosition, Color color)
-    {
-        var marker = new LinkMarker(relativePosition, color);
-        linkMarkers.Add(marker);
-        InvalidateVisual();
-        return marker;
-    }
-
-    internal void RemoveLinkMarker(LinkMarker marker)
-    {
-        if (linkMarkers.Remove(marker))
-            InvalidateVisual();
-    }
-
-    internal Point GetRelativePosition(Point position)
-    {
-        return new Point(
-            (position.X - bitmapRenderRectangle.Left) / bitmapRenderRectangle.Width,
-            (position.Y - bitmapRenderRectangle.Top) / bitmapRenderRectangle.Height);
-    }
-
-    internal Point GetLinkMarkerPosition(LinkMarker marker)
-    {
-        return new Point(
-            bitmapRenderRectangle.Left + marker.RelativePosition.X * bitmapRenderRectangle.Width,
-            bitmapRenderRectangle.Top + marker.RelativePosition.Y * bitmapRenderRectangle.Height);
-    }
-
-    internal bool IsLinkMarkerAt(LinkMarker marker, Point position)
-    {
-        const double hitRadius = 20;
-        var markerPosition = GetLinkMarkerPosition(marker);
-        var deltaX = position.X - markerPosition.X;
-        var deltaY = position.Y - markerPosition.Y;
-        return linkMarkers.Contains(marker) && deltaX * deltaX + deltaY * deltaY <= hitRadius * hitRadius;
     }
 
     /// <summary>
@@ -397,14 +324,7 @@ public class PDFPageCanvas : InkCanvas
             context.DrawImage(page.Bitmap, new Rect(0, 0, page.Bitmap.Size.Width, page.Bitmap.Size.Height), bitmapRenderRectangle);
         }
 
-        foreach (var marker in linkMarkers)
-        {
-            const double radius = 12;
-            var color = Color.FromArgb((byte)(marker.Color.A * 0.6), marker.Color.R, marker.Color.G, marker.Color.B);
-            var markerPosition = GetLinkMarkerPosition(marker);
-            context.DrawEllipse(new SolidColorBrush(color), null,
-                new Rect(markerPosition.X - radius, markerPosition.Y - radius, radius * 2, radius * 2));
-        }
+        pageRenderer.Render(context);
 
         // If in stamp model, then render a stamp preview at the current pointer position.
         if (isHairpinDrawing && model.IsStampMode && model.SelectedStamp.IsHairpin)
@@ -523,5 +443,11 @@ public class PDFPageCanvas : InkCanvas
         var stroke = SkiaStroke.CreateStaticStroke(InkId.NewId(), path, stylusPointListSpan, inkColor, 0.1f, true, inkStrokeRenderer: null);
         AvaloniaSkiaInkCanvas.AddStaticStroke(stroke);
         SaveStrokes();
+    }
+
+    internal void SetRenderers(CanvasRenderer canvasRenderer, PageRenderer pageRenderer)
+    {
+        this.canvasRenderer = canvasRenderer;
+        this.pageRenderer = pageRenderer;
     }
 }
